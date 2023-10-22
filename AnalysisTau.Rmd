@@ -1,0 +1,665 @@
+---
+title: "Hetero Analysis"
+author: "Yicheng Shen"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mosaic)
+library(purrr)
+ggplot2::theme_set(ggplot2::theme_bw())
+knitr::opts_chunk$set(out.width = "100%", fig.align = 'center')
+```
+
+
+```{r}
+res <- read.csv('res/res_binary.csv')   
+res2 <- read.csv('res/htelogit_tau50.csv')   
+res3 <- read.csv('res/ab_tau50.csv')   
+
+modelname = rep("htelogit_tau50", nrow(res2))
+col.group = rep("Bayesian", nrow(res2))
+pch.group = rep("HTE model", nrow(res2))
+
+res2 = cbind(res2[, 1:3], modelname, col.group, pch.group, res2[, 4:ncol(res2)])
+res2$I.2 = NA
+
+
+modelname = rep("ablogit_tau50", nrow(res3))
+col.group = rep("Bayesian", nrow(res3))
+pch.group = rep("HTE model", nrow(res3))
+
+res3 = cbind(res3[, 1:3], modelname, col.group, pch.group, res3[, 4:ncol(res3)])
+res3$I.2 = NA
+
+res_all = rbind(res, res2, res3)
+```
+
+
+```{r}
+result = res_all %>% 
+  mutate(modelname = factor(modelname, levels = c("ivfe", "ivre", "ctevaguelogit","ctebeta", "htevaguelogit", "htelogit_tau50", "htebeta", "ablogit", "ablogit_tau50")))
+
+n_distinct(result$MA.id)
+nrow(result) # 9 model result per study
+
+table((result %>% distinct(MA.id, .keep_all = TRUE))$event)
+```
+
+
+```{r}
+result = result %>% 
+  mutate(Significant_num = 1-as.numeric(0 >= low & 0 <= up)) %>% 
+  mutate(Significant = ifelse(Significant_num == "1", "significant", "non-significant"))
+
+result$Significant <- factor(result$Significant, levels = c("significant", "non-significant")) 
+
+# result %>% ggplot() + geom_ribbon(aes(x = MA.id, ymin = low, ymax = up)) + facet_wrap(~modelname)
+```
+
+
+## analyze seperate outcome type
+
+```{r}
+result_com = result %>% filter(event %in% c("common"))
+result_if = result %>% filter(event %in% c("infrequent"))
+result_ra = result %>% filter(event %in% c("rare"))
+result_vra = result %>% filter(event %in% c("very rare"))
+```
+
+# tau
+
+```{r}
+# result %>% filter(modelname %in% c("ivfe", "ivre")) %>% 
+#   group_by(MA.id) %>% mutate(diff_est = diff(est)) %>%  filter(modelname == "ivre") %>% 
+#   arrange(abs(tau)) %>%  ungroup() %>%  mutate(index = row_number()) %>% 
+#   mutate(event = factor(event, levels = c("very rare", "rare", "infrequent", "common"))) %>% 
+#   ggplot() + geom_point(aes(tau, diff_est, color = event), alpha = 0.5, size = 0.7) + 
+#   # scale_color_manual(values = c("Gray", "Green", "Orange", "Red"))
+#   scale_color_manual(values = c("Red","Orange", "Green", "Gray" ))
+# 
+# 
+# 
+# result %>% filter(modelname %in% c("ivfe", "ivre")) %>% 
+#   group_by(MA.id) %>% mutate(diff_est = diff(est)) %>%  filter(modelname == "ivre") %>% 
+#   ggplot() + 
+#   geom_point(aes(tau, diff_est, color = event), alpha = 0.5, size = 0.7) + facet_wrap(~event)
+# 
+# 
+# 
+# result %>% filter(modelname %in% c("ivfe", "ivre")) %>% group_by(MA.id) %>% mutate(diff_est = diff(est)) %>%  filter(modelname == "ivre") %>%arrange(abs(tau)) %>%  ungroup() %>%  mutate(index = row_number()) %>% 
+#   ggplot() + geom_point(aes(index, diff_est)) + facet_wrap(~event)
+
+
+
+result_ivre_tau = result %>% filter(modelname %in% c("ivfe", "ivre")) %>% group_by(MA.id) %>% mutate(diff_est = diff(est)) %>%  filter(modelname == "ivre") %>% ungroup()
+ 
+result_ivre_tau %>% mutate(plot_mean = mean(diff_est), plot_sd = sd(diff_est)) %>% 
+ggplot() + 
+  geom_point(data = result_ivre_tau[which(result_ivre_tau$event == "common"),], 
+             aes(tau, diff_est, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_ivre_tau[which(result_ivre_tau$event == "infrequent"),], 
+             aes(tau, diff_est, color = event), alpha = 0.5, size = 0.5)+
+  geom_point(data = result_ivre_tau[which(result_ivre_tau$event == "rare"),], 
+             aes(tau, diff_est, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_ivre_tau[which(result_ivre_tau$event == "very rare"),], 
+             aes(tau, diff_est, color = event), alpha = 0.5, size = 0.5) +
+  scale_color_manual(values = c("Gray", "Green", "Orange", "Red")) + 
+  labs(title = "ivre - ivfe", x = "tau from ivre") + 
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd), linetype = "dashed", color = "Blue") + 
+  geom_hline(aes(yintercept = plot_mean - 2 * plot_sd), linetype = "dashed", color = "Blue")
+
+
+
+result_htevaguelogit_tau = result %>% filter(modelname %in% c("ctevaguelogit", "htevaguelogit")) %>% group_by(MA.id) %>% mutate(diff_est = diff(est)) %>%  filter(modelname == "htevaguelogit") %>% ungroup()
+ 
+result_htevaguelogit_tau %>% mutate(plot_mean = mean(diff_est), plot_sd = sd(diff_est)) %>% 
+ggplot() + 
+  geom_point(data = result_htevaguelogit_tau[which(result_htevaguelogit_tau$event == "common"),], 
+             aes(tau, diff_est, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_htevaguelogit_tau[which(result_htevaguelogit_tau$event == "infrequent"),], 
+             aes(tau, diff_est, color = event), alpha = 0.5, size = 0.5)+
+  geom_point(data = result_htevaguelogit_tau[which(result_htevaguelogit_tau$event == "rare"),], 
+             aes(tau, diff_est, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_htevaguelogit_tau[which(result_htevaguelogit_tau$event == "very rare"),], 
+             aes(tau, diff_est, color = event), alpha = 0.5, size = 0.5) +
+  scale_color_manual(values = c("Gray", "Green", "Orange", "Red")) + 
+  labs(title = "htevaguelogit - ctevaguelogit", x = "tau from htevaguelogit") + 
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd), linetype = "dashed", color = "Blue") + 
+  geom_hline(aes(yintercept = plot_mean - 2 * plot_sd), linetype = "dashed", color = "Blue") 
+
+
+
+
+result_htelogit_tau50_tau = result %>% filter(modelname %in% c("ctevaguelogit", "htelogit_tau50")) %>% group_by(MA.id) %>% mutate(diff_est = diff(est)) %>%  filter(modelname == "htelogit_tau50") %>% ungroup()
+ 
+result_htelogit_tau50_tau %>% mutate(plot_mean = mean(diff_est), plot_sd = sd(diff_est)) %>% 
+ggplot() + 
+  geom_point(data = result_htelogit_tau50_tau[which(result_htelogit_tau50_tau$event == "common"),], 
+             aes(tau, diff_est, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_htelogit_tau50_tau[which(result_htelogit_tau50_tau$event == "infrequent"),], 
+             aes(tau, diff_est, color = event), alpha = 0.5, size = 0.5)+
+  geom_point(data = result_htelogit_tau50_tau[which(result_htelogit_tau50_tau$event == "rare"),], 
+             aes(tau, diff_est, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_htelogit_tau50_tau[which(result_htelogit_tau50_tau$event == "very rare"),], 
+             aes(tau, diff_est, color = event), alpha = 0.5, size = 0.5) +
+  scale_color_manual(values = c("Gray", "Green", "Orange", "Red")) + 
+  labs(title = "htelogit_tau50 - ctevaguelogit", x = "tau from htelogit_tau50") + 
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd), linetype = "dashed", color = "Blue") + 
+  geom_hline(aes(yintercept = plot_mean - 2 * plot_sd), linetype = "dashed", color = "Blue") 
+```
+
+
+```{r, fig.width=12, fig.height=10, eval = F}
+result_tau = result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50", "ivre"))
+
+gridExtra::grid.arrange(
+result_tau %>%  filter(event == "common") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>%
+  ggplot() + geom_point(aes(index, tau, color = modelname), alpha = 0.6, size = 0.3) + 
+  facet_wrap(~modelname)+ geom_hline(yintercept = 2) + labs(title = "common") + guides(color = "none"),
+  
+
+result_tau %>% 
+  group_by(modelname) %>% filter(event == "infrequent") %>% 
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_point(aes(index, tau, color = modelname), alpha = 0.6, size = 0.3) + 
+  facet_wrap(~modelname)+ geom_hline(yintercept = 2) + labs(title = "infrequent") + guides(color = "none"),
+
+
+result_tau %>% filter(event == "rare") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_point(aes(index, tau, color = modelname), alpha = 1, size = 0.5) + 
+  facet_wrap(~modelname)+ geom_hline(yintercept = 2) + labs(title = "rare") + guides(color = "none"),
+
+result_tau %>% filter(event == "very rare") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_point(aes(index, tau, color = modelname), alpha = 1, size = 0.5) + 
+  facet_wrap(~modelname) + geom_hline(yintercept = 2) + labs(title = "very rare") + guides(color = "none"),
+  nrow = 4
+)
+
+
+
+gridExtra::grid.arrange(
+result %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>% ungroup() %>% 
+  filter(modelname %in% c("htevaguelogit", "htelogit_tau50", "ivre"), event == "common") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>%
+  ggplot() + geom_point(aes(index, tau, color = modelname), alpha = 0.6, size = 0.3) + 
+  facet_wrap(~modelname)+ geom_hline(yintercept = 2) + labs(title = "common") + guides(color = "none"),
+  
+
+result %>%
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>% ungroup() %>% 
+  filter(modelname %in% c("htevaguelogit", "htelogit_tau50", "ivre"), event == "infrequent") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_point(aes(index, tau, color = modelname), alpha = 0.6, size = 0.3) + 
+  facet_wrap(~modelname)+ geom_hline(yintercept = 2) + labs(title = "infrequent") + guides(color = "none"),
+
+
+result %>%
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>% ungroup() %>% 
+  filter(modelname %in% c("htevaguelogit", "htelogit_tau50", "ivre"), event == "rare") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_point(aes(index, tau, color = modelname), alpha = 1, size = 0.5) + 
+  facet_wrap(~modelname)+ geom_hline(yintercept = 2) + labs(title = "rare") + guides(color = "none"),
+
+result %>%
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>% ungroup() %>% 
+  filter(modelname %in% c("htevaguelogit", "htelogit_tau50", "ivre"), event == "very rare") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_point(aes(index, tau, color = modelname), alpha = 1, size = 0.5) + 
+  facet_wrap(~modelname) + geom_hline(yintercept = 2) + labs(title = "very rare") + guides(color = "none"),
+  nrow = 4
+)
+```
+
+
+```{r, fig.width=12, fig.height=10}
+result_tau = result %>% 
+  filter(modelname %in% c("htevaguelogit", "htelogit_tau50", "ivre")) %>% 
+  mutate(num_study = ifelse(num_studies<=20, "medium", "large")) %>% 
+  mutate(num_study = ifelse(num_studies<=10, "small", num_study)) %>% 
+  mutate(num_study = ifelse(num_studies<=5, "very small", num_study))
+
+result %>%
+  group_by(MA.id) %>%
+  mutate(avg_est = mean(est)) %>%
+  arrange(avg_est) %>%
+  ungroup() %>%  # Remove grouping temporarily
+  mutate(index = row_number()%/%9+1) %>% 
+  ggplot() + geom_point(aes(index, est, color = modelname), alpha = 0.5, size = 0.5) + facet_wrap(~modelname)+ geom_point(aes(index, avg_est), alpha = 1, size = 0.5)
+
+
+events <- c("common", "infrequent", "rare", "very rare")
+
+plots <- events %>%
+  map(~
+    result_tau %>% filter(event == .x) %>% group_by(modelname) %>% mutate(index = row_number()) %>% ungroup() %>%
+    ggplot() + geom_point(aes(index, tau, color = modelname), alpha = ifelse(.x %in% c("common", "infrequent"), 0.6, 1), size = ifelse(.x %in% c("common", "infrequent"), 0.3, 0.8)) +
+    geom_hline(yintercept = 2) + facet_wrap(~modelname) +
+    labs(title = .x) + guides(color = "none")
+  )
+
+gridExtra::grid.arrange(grobs = plots, nrow = length(events))
+```
+
+
+```{r, fig.width=12, fig.height=10}
+events <- c("common", "infrequent", "rare", "very rare")
+
+plots <- events %>%
+  map(~
+    result_tau %>% filter(event == .x) %>%
+    group_by(modelname) %>% mutate(index = row_number()) %>% ungroup() %>%
+    ggplot() +
+    geom_point(aes(index, tau, color = num_study), alpha = ifelse(.x %in% c("common", "infrequent"), 0.6, 1), size = ifelse(.x %in% c("common", "infrequent"), 0.3, 0.8)) +
+    facet_wrap(~modelname) +
+    geom_hline(yintercept = 2) +
+    labs(title = .x) 
+  )
+
+gridExtra::grid.arrange(grobs = plots, nrow = length(events))
+
+
+plots <- events %>%
+  map(~
+    result_tau %>% filter(event == .x) %>%
+    group_by(modelname) %>% mutate(index = row_number()) %>% ungroup() %>%
+    ggplot() +
+    geom_point(aes(index, est, color = num_study), alpha = ifelse(.x %in% c("common", "infrequent"), 0.6, 1), size = ifelse(.x %in% c("common", "infrequent"), 0.3, 0.8)) +
+    facet_wrap(~modelname) +
+    geom_hline(yintercept = 2) +
+    labs(title = .x) 
+  )
+
+gridExtra::grid.arrange(grobs = plots, nrow = length(events))
+
+
+result_tau = result %>% 
+  filter(modelname %in% c("htevaguelogit", "htelogit_tau50", "ivre")) %>% 
+  mutate(num_study = ifelse(num_studies<=10, "small", "large")) 
+
+
+events <- c("common", "infrequent", "rare", "very rare")
+
+plots <- events %>%
+  map(~
+    result_tau %>% filter(event == .x) %>%
+    group_by(modelname) %>% mutate(index = row_number()) %>% ungroup() %>%
+    ggplot() +
+    geom_point(aes(index, tau, color = num_study), alpha = ifelse(.x %in% c("common", "infrequent"), 0.6, 1), size = ifelse(.x %in% c("common", "infrequent"), 0.3, 0.8)) +
+    facet_wrap(~modelname) +
+    geom_hline(yintercept = 2) +
+    labs(title = .x) 
+  )
+
+gridExtra::grid.arrange(grobs = plots, nrow = length(events))
+```
+
+```{r, fig.width=12}
+result_tau = result %>% 
+  filter(modelname %in% c("htevaguelogit", "htelogit_tau50", "ivre")) %>% 
+  mutate(num_study = ifelse(num_studies<=20, "medium", "large")) %>% 
+  mutate(num_study = ifelse(num_studies<=10, "small", num_study)) %>% 
+  mutate(num_study = ifelse(num_studies<=5, "very small", num_study))
+
+result_tau %>% 
+  filter(modelname %in% c("htelogit_tau50", "ivre")) %>% 
+  group_by(MA.id) %>% mutate(diff_tau = diff(tau)) %>% filter(modelname == "htelogit_tau50") %>% 
+  ggplot() + geom_point(aes(MA.id, diff_tau, color = num_study), size = 0.5) + facet_wrap(~event) + labs(title = "htelogit_tau50 - ivre")
+  
+  
+result_tau %>% 
+  filter(modelname %in% c("htelogit_tau50", "htevaguelogit")) %>% 
+  group_by(MA.id) %>% mutate(diff_tau = diff(tau)) %>% filter(modelname == "htelogit_tau50") %>% 
+  ggplot() + geom_point(aes(MA.id, diff_tau, color = num_study), size = 0.5) + facet_wrap(~event) + labs(title = "htelogit_tau50 - htevaguelogit")
+
+
+result_tau %>% 
+  filter(modelname %in% c("ivre", "htevaguelogit")) %>% 
+  group_by(MA.id) %>% mutate(diff_tau = diff(tau)) %>% filter(modelname == "htevaguelogit") %>% 
+  ggplot() + geom_point(aes(MA.id, diff_tau, color = num_study), size = 0.5) + facet_wrap(~event) + labs(title = "htevaguelogit - ivre")
+```
+
+
+```{r}
+result %>% filter(MA.id == 1, pch.group == "HTE model", modelname %in% c("ablogit", "ablogit_tau50", "htebeta"))
+```
+
+
+
+
+# ablogit 2 and 50
+
+
+```{r}
+missing.MA.id = (result %>% filter(modelname == "htebeta") %>% filter(is.na(est)))$MA.id
+result_narm = result %>% filter(! MA.id %in% missing.MA.id)
+```
+
+
+```{r, fig.width=12, fig.height=4}
+result_ablogit_tau = result_narm %>% filter(modelname %in% c("ctebeta", "ablogit")) %>% group_by(MA.id) %>% 
+  mutate(diff_pa = diff(pa), diff_pc = diff(pc)) %>%  filter(modelname == "ablogit") %>% ungroup()
+ 
+gridExtra::grid.arrange(
+result_ablogit_tau %>% mutate(plot_mean = mean(diff_pa), plot_sd = sd(diff_pa)) %>% 
+ggplot() + 
+  geom_point(data = result_ablogit_tau[which(result_ablogit_tau$event == "common"),], 
+             aes(taua, diff_pa, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_ablogit_tau[which(result_ablogit_tau$event == "infrequent"),], 
+             aes(taua, diff_pa, color = event), alpha = 0.5, size = 0.5)+
+  geom_point(data = result_ablogit_tau[which(result_ablogit_tau$event == "rare"),], 
+             aes(taua, diff_pa, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_ablogit_tau[which(result_ablogit_tau$event == "very rare"),], 
+             aes(taua, diff_pa, color = event), alpha = 0.5, size = 0.5) +
+  scale_color_manual(values = c("Gray", "Green", "Orange", "Red")) + 
+  labs(title = "ablogit - ctebeta", x = "tauc from ablogit") + 
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd), linetype = "dashed", color = "Blue") + 
+  geom_hline(aes(yintercept = plot_mean - 2 * plot_sd), linetype = "dashed", color = "Blue"),
+
+result_ablogit_tau %>% mutate(plot_mean = mean(diff_pc), plot_sd = sd(diff_pc)) %>% 
+ggplot() + 
+  geom_point(data = result_ablogit_tau[which(result_ablogit_tau$event == "common"),], 
+             aes(tauc, diff_pc, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_ablogit_tau[which(result_ablogit_tau$event == "infrequent"),], 
+             aes(tauc, diff_pc, color = event), alpha = 0.5, size = 0.5)+
+  geom_point(data = result_ablogit_tau[which(result_ablogit_tau$event == "rare"),], 
+             aes(tauc, diff_pc, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_ablogit_tau[which(result_ablogit_tau$event == "very rare"),], 
+             aes(tauc, diff_pc, color = event), alpha = 0.5, size = 0.5) +
+  scale_color_manual(values = c("Gray", "Green", "Orange", "Red")) + 
+  labs(title = "ablogit - ctebeta", x = "tauc from ablogit") + 
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd), linetype = "dashed", color = "Blue") + 
+  geom_hline(aes(yintercept = plot_mean - 2 * plot_sd), linetype = "dashed", color = "Blue"), nrow = 1)
+
+
+
+
+result_ablogit_tau50_tau = result_narm %>% 
+  filter(! CDSR.id %in% c("CD002809","CD013438")) %>% 
+  filter(modelname %in% c("ctebeta", "ablogit_tau50")) %>% group_by(MA.id) %>% 
+  mutate(diff_pa = diff(pa), diff_pc = diff(pc)) %>%  filter(modelname == "ablogit_tau50") %>% ungroup()
+ 
+gridExtra::grid.arrange(
+result_ablogit_tau50_tau %>% mutate(plot_mean = mean(diff_pa), plot_sd = sd(diff_pa)) %>% 
+ggplot() + 
+  geom_point(data = result_ablogit_tau50_tau[which(result_ablogit_tau50_tau$event == "common"),], 
+             aes(taua, diff_pa, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_ablogit_tau50_tau[which(result_ablogit_tau50_tau$event == "infrequent"),], 
+             aes(taua, diff_pa, color = event), alpha = 0.5, size = 0.5)+
+  geom_point(data = result_ablogit_tau50_tau[which(result_ablogit_tau50_tau$event == "rare"),], 
+             aes(taua, diff_pa, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_ablogit_tau50_tau[which(result_ablogit_tau50_tau$event == "very rare"),], 
+             aes(taua, diff_pa, color = event), alpha = 0.5, size = 0.5) +
+  scale_color_manual(values = c("Gray", "Green", "Orange", "Red")) + 
+  labs(title = "ablogit_tau50 - ctebeta", x = "tauc from ablogit_tau50") + 
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd), linetype = "dashed", color = "Blue") + 
+  geom_hline(aes(yintercept = plot_mean - 2 * plot_sd), linetype = "dashed", color = "Blue"),
+
+result_ablogit_tau50_tau %>% mutate(plot_mean = mean(diff_pc), plot_sd = sd(diff_pc)) %>% 
+ggplot() + 
+  geom_point(data = result_ablogit_tau50_tau[which(result_ablogit_tau50_tau$event == "common"),], 
+             aes(tauc, diff_pc, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_ablogit_tau50_tau[which(result_ablogit_tau50_tau$event == "infrequent"),], 
+             aes(tauc, diff_pc, color = event), alpha = 0.5, size = 0.5)+
+  geom_point(data = result_ablogit_tau50_tau[which(result_ablogit_tau50_tau$event == "rare"),], 
+             aes(tauc, diff_pc, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_ablogit_tau50_tau[which(result_ablogit_tau50_tau$event == "very rare"),], 
+             aes(tauc, diff_pc, color = event), alpha = 0.5, size = 0.5) +
+  scale_color_manual(values = c("Gray", "Green", "Orange", "Red")) + 
+  labs(title = "ablogit_tau50 - ctebeta", x = "tauc from ablogit_tau50") + 
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd), linetype = "dashed", color = "Blue") + 
+  geom_hline(aes(yintercept = plot_mean - 2 * plot_sd), linetype = "dashed", color = "Blue"), nrow = 1)
+
+
+result_ablogit_tau50_tau = result %>% 
+  filter(modelname %in% c("ablogit", "ablogit_tau50"), ! CDSR.id %in% c("CD002809","CD013438")) %>% 
+  filter(modelname %in% c("ablogit", "ablogit_tau50")) %>% group_by(MA.id) %>% 
+  mutate(diff_pa = diff(pa), diff_pc = diff(pc)) %>%  filter(modelname == "ablogit_tau50") %>% ungroup()
+ 
+gridExtra::grid.arrange(
+result_ablogit_tau50_tau %>% mutate(plot_mean = mean(diff_pa), plot_sd = sd(diff_pa)) %>% 
+ggplot() + 
+  geom_point(data = result_ablogit_tau50_tau[which(result_ablogit_tau50_tau$event == "common"),], 
+             aes(taua, diff_pa, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_ablogit_tau50_tau[which(result_ablogit_tau50_tau$event == "infrequent"),], 
+             aes(taua, diff_pa, color = event), alpha = 0.5, size = 0.5)+
+  geom_point(data = result_ablogit_tau50_tau[which(result_ablogit_tau50_tau$event == "rare"),], 
+             aes(taua, diff_pa, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_ablogit_tau50_tau[which(result_ablogit_tau50_tau$event == "very rare"),], 
+             aes(taua, diff_pa, color = event), alpha = 0.5, size = 0.5) +
+  scale_color_manual(values = c("Gray", "Green", "Orange", "Red")) + 
+  labs(title = "ablogit_tau50 - ablogit", x = "tauc from ablogit_tau50") + 
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd), linetype = "dashed", color = "Blue") + 
+  geom_hline(aes(yintercept = plot_mean - 2 * plot_sd), linetype = "dashed", color = "Blue"),
+
+result_ablogit_tau50_tau %>% mutate(plot_mean = mean(diff_pc), plot_sd = sd(diff_pc)) %>% 
+ggplot() + 
+  geom_point(data = result_ablogit_tau50_tau[which(result_ablogit_tau50_tau$event == "common"),], 
+             aes(tauc, diff_pc, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_ablogit_tau50_tau[which(result_ablogit_tau50_tau$event == "infrequent"),], 
+             aes(tauc, diff_pc, color = event), alpha = 0.5, size = 0.5)+
+  geom_point(data = result_ablogit_tau50_tau[which(result_ablogit_tau50_tau$event == "rare"),], 
+             aes(tauc, diff_pc, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_ablogit_tau50_tau[which(result_ablogit_tau50_tau$event == "very rare"),], 
+             aes(tauc, diff_pc, color = event), alpha = 0.5, size = 0.5) +
+  scale_color_manual(values = c("Gray", "Green", "Orange", "Red")) + 
+  labs(title = "ablogit_tau50 - ablogit", x = "tauc from ablogit_tau50") + 
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd), linetype = "dashed", color = "Blue") + 
+  geom_hline(aes(yintercept = plot_mean - 2 * plot_sd), linetype = "dashed", color = "Blue"), nrow = 1)
+```
+
+
+```{r, fig.width=12, fig.height=10}
+result_tau2 = result %>% 
+  filter(modelname %in% c("ablogit", "ablogit_tau50")) %>% 
+  mutate(num_study = ifelse(num_studies<=20, "medium", "large")) %>% 
+  mutate(num_study = ifelse(num_studies<=10, "small", num_study)) %>% 
+  mutate(num_study = ifelse(num_studies<=5, "very small", num_study))
+
+
+events <- c("common", "infrequent", "rare", "very rare")
+
+plots <- events %>%
+  map(~
+    result_tau2 %>% filter(event == .x) %>%
+    group_by(modelname) %>% mutate(index = row_number()) %>% ungroup() %>%
+    ggplot() +
+    geom_point(aes(index, taua, color = num_study), alpha = ifelse(.x %in% c("common", "infrequent"), 0.6, 1), size = ifelse(.x %in% c("common", "infrequent"), 0.3, 0.8)) + facet_wrap(~modelname) +
+    # geom_hline(yintercept = 2) +
+    labs(title = .x) 
+  )
+
+gridExtra::grid.arrange(grobs = plots, nrow = length(events))
+
+
+# remove outliers CD002809 CD013438
+
+result_tau2 = result %>% 
+  filter(modelname %in% c("ablogit", "ablogit_tau50"), ! CDSR.id %in% c("CD002809","CD013438")) %>% 
+  mutate(num_study = ifelse(num_studies<=20, "medium", "large")) %>% 
+  mutate(num_study = ifelse(num_studies<=10, "small", num_study)) %>% 
+  mutate(num_study = ifelse(num_studies<=5, "very small", num_study))
+
+
+events <- c("common", "infrequent", "rare", "very rare")
+
+plots <- events %>%
+  map(~
+    result_tau2 %>% filter(event == .x) %>%
+    group_by(modelname) %>% mutate(index = row_number()) %>% ungroup() %>%
+    ggplot() +
+    geom_point(aes(index, taua, color = num_study), alpha = ifelse(.x %in% c("common", "infrequent"), 0.6, 1), size = ifelse(.x %in% c("common", "infrequent"), 0.3, 0.8)) + facet_wrap(~modelname) +
+    # geom_hline(yintercept = 2) +
+    labs(title = .x) 
+  )
+
+gridExtra::grid.arrange(grobs = plots, nrow = length(events))
+
+
+plots <- events %>%
+  map(~
+    result_tau2 %>% filter(event == .x) %>%
+    group_by(modelname) %>% mutate(index = row_number()) %>% ungroup() %>%
+    ggplot() +
+    geom_point(aes(index, tauc, color = num_study), alpha = ifelse(.x %in% c("common", "infrequent"), 0.6, 1), size = ifelse(.x %in% c("common", "infrequent"), 0.3, 0.8)) + facet_wrap(~modelname) +
+    # geom_hline(yintercept = 2) +
+    labs(title = .x) 
+  )
+
+gridExtra::grid.arrange(grobs = plots, nrow = length(events))
+
+
+plots <- events %>%
+  map(~
+    result_tau2 %>% filter(event == .x) %>%
+    group_by(modelname) %>% mutate(index = row_number()) %>% ungroup() %>%
+    ggplot() +
+    geom_point(aes(index, corr, color = num_study), alpha = ifelse(.x %in% c("common", "infrequent"), 0.6, 1), size = ifelse(.x %in% c("common", "infrequent"), 0.3, 0.8)) + facet_wrap(~modelname) +
+    # geom_hline(yintercept = 2) +
+    labs(title = .x) + ylim(-1,1)
+  )
+
+gridExtra::grid.arrange(grobs = plots, nrow = length(events))
+
+```
+
+
+
+```{r}
+
+```
+
+
+
+# Beta taua and tauc 
+
+```{r, fig.width=12, fig.height=5}
+result_htebeta_tau = result_narm %>% filter(modelname %in% c("ctebeta", "htebeta")) %>% group_by(MA.id) %>% 
+  mutate(diff_pa = diff(pa), diff_pc = diff(pc)) %>%  filter(modelname == "htebeta") %>% ungroup()
+ 
+gridExtra::grid.arrange(
+result_htebeta_tau %>% mutate(plot_mean = mean(diff_pa), plot_sd = sd(diff_pa)) %>% 
+ggplot() + 
+  geom_point(data = result_htebeta_tau[which(result_htebeta_tau$event == "common"),], 
+             aes(taua, diff_pa, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_htebeta_tau[which(result_htebeta_tau$event == "infrequent"),], 
+             aes(taua, diff_pa, color = event), alpha = 0.5, size = 0.5)+
+  geom_point(data = result_htebeta_tau[which(result_htebeta_tau$event == "rare"),], 
+             aes(taua, diff_pa, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_htebeta_tau[which(result_htebeta_tau$event == "very rare"),], 
+             aes(taua, diff_pa, color = event), alpha = 0.5, size = 0.5) +
+  scale_color_manual(values = c("Gray", "Green", "Orange", "Red")) + 
+  labs(title = "htebeta - ctebeta", x = "taua from htebeta") + 
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd), linetype = "dashed", color = "Blue") + 
+  geom_hline(aes(yintercept = plot_mean - 2 * plot_sd), linetype = "dashed", color = "Blue"),
+
+result_htebeta_tau %>% mutate(plot_mean = mean(diff_pc), plot_sd = sd(diff_pc)) %>% 
+ggplot() + 
+  geom_point(data = result_htebeta_tau[which(result_htebeta_tau$event == "common"),], 
+             aes(tauc, diff_pc, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_htebeta_tau[which(result_htebeta_tau$event == "infrequent"),], 
+             aes(tauc, diff_pc, color = event), alpha = 0.5, size = 0.5)+
+  geom_point(data = result_htebeta_tau[which(result_htebeta_tau$event == "rare"),], 
+             aes(tauc, diff_pc, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_htebeta_tau[which(result_htebeta_tau$event == "very rare"),], 
+             aes(tauc, diff_pc, color = event), alpha = 0.5, size = 0.5) +
+  labs(title = "htebeta - ctebeta", x = "tauc from htebeta") + 
+  scale_color_manual(values = c("Gray", "Green", "Orange", "Red")) + 
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd), linetype = "dashed", color = "Blue") + 
+  geom_hline(aes(yintercept = plot_mean - 2 * plot_sd), linetype = "dashed", color = "Blue"), nrow = 1)
+```
+
+
+
+
+```{r, fig.width=12, fig.height=10}
+probability_to_log_odds <- function(probability) {
+  log_odds <- log(probability / (1 - probability))
+  return(log_odds)
+}
+
+log_odds_to_probability <- function(log_odds) {
+  probability <- exp(log_odds) / (1 + exp(log_odds))
+  return(probability)
+}
+
+
+result_tau3 = result_narm %>% 
+  filter(modelname %in% c("ablogit", "ablogit_tau50", "htebeta"), ! CDSR.id %in% c("CD002809","CD013438")) %>% 
+  mutate(taua = ifelse(modelname == "htebeta", probability_to_log_odds(taua), taua)) %>% 
+  mutate(tauc = ifelse(modelname == "htebeta", probability_to_log_odds(tauc), tauc)) %>% 
+  mutate(num_study = ifelse(num_studies<=20, "medium", "large")) %>% 
+  mutate(num_study = ifelse(num_studies<=10, "small", num_study)) %>% 
+  mutate(num_study = ifelse(num_studies<=5, "very small", num_study))
+
+
+result_tau3 = result_narm %>% 
+  filter(modelname %in% c("ablogit", "ablogit_tau50", "htebeta"), ! CDSR.id %in% c("CD002809","CD013438")) %>% 
+  mutate(taua = ifelse(modelname != "htebeta", log_odds_to_probability(taua), taua)) %>% 
+  mutate(tauc = ifelse(modelname != "htebeta", log_odds_to_probability(tauc), tauc)) %>% 
+  mutate(num_study = ifelse(num_studies<=20, "medium", "large")) %>% 
+  mutate(num_study = ifelse(num_studies<=10, "small", num_study)) %>% 
+  mutate(num_study = ifelse(num_studies<=5, "very small", num_study))
+
+
+plots <- events %>%
+  map(~
+    result_tau3 %>% filter(event == .x) %>%
+    group_by(modelname) %>% mutate(index = row_number()) %>% ungroup() %>%
+    ggplot() +
+    geom_point(aes(index, taua, color = num_study), alpha = ifelse(.x %in% c("common", "infrequent"), 0.6, 1), size = ifelse(.x %in% c("common", "infrequent"), 0.3, 0.8)) + facet_wrap(~modelname) +
+    labs(title = .x) 
+  )
+
+gridExtra::grid.arrange(grobs = plots, nrow = length(events))
+
+
+
+plots <- events %>%
+  map(~
+    result_tau3 %>% filter(event == .x) %>%
+    group_by(modelname) %>% mutate(index = row_number()) %>% ungroup() %>%
+    ggplot() +
+    geom_point(aes(index, tauc, color = num_study), alpha = ifelse(.x %in% c("common", "infrequent"), 0.6, 1), size = ifelse(.x %in% c("common", "infrequent"), 0.3, 0.8)) + facet_wrap(~modelname) +
+    labs(title = .x) 
+  )
+
+gridExtra::grid.arrange(grobs = plots, nrow = length(events))
+
+summary((result_narm[which(result_narm$modelname=="htebeta"),])$taua)
+summary((result_narm[which(result_narm$modelname=="htebeta"),])$tauc)
+```
+
+
+
+```{r, fig.width=12, fig.height=6}
+result_narm %>% 
+  filter(modelname %in% c("ablogit", "ablogit_tau50", "htebeta"), ! CDSR.id %in% c("CD002809","CD013438")) %>% 
+  ggplot(aes(MA.id, taua, color = modelname)) + geom_point() + facet_wrap(~event)
+
+
+result_narm %>% 
+  filter(modelname %in% c("ablogit", "ablogit_tau50", "htebeta"), ! CDSR.id %in% c("CD002809","CD013438")) %>% 
+  ggplot(aes(MA.id, tauc, color = modelname)) + geom_point() + facet_wrap(~event)
+```
+

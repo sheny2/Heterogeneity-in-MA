@@ -1,0 +1,953 @@
+---
+title: "res_cont_visual"
+author: "Ashley Hu"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(psych)
+library(ggplot2)
+library(ggpubr)
+library(tidyverse)
+library(ggpubr)
+library(gridExtra)
+library(grid)
+library(devtools)
+```
+
+```{r}
+#exclude MA with extreme values 
+res.cont.sd <- read.csv('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/data/res_cont_jags/jags_cont_revised.csv') %>% filter(!MA.id %in% c(18, 185, 703, 337, 349, 373, 375, 380, 704, 9, 596, 326, 673, 674, 9,132,136,180,524,596,703,738,875,326,673,674,789,790))
+
+res.cont.md <- read.csv('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/data/res_cont_jags/res_MD_tau50.csv') %>% filter(!MA.id %in% c(18, 185, 703, 337, 349, 373, 375, 380, 704, 9, 596, 326, 673, 674, 9,132,136,180,524,596,703,738,875,326,673,674,789,790, 6023))
+
+res.cont.md.tau100 <- read.csv('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/data/res_cont_jags/res_MD_tau100.csv') %>% filter(!MA.id %in% c(18, 185, 703, 337, 349, 373, 375, 380, 704, 9, 596, 326, 673, 674, 9,132,136,180,524,596,703,738,875,326,673,674,789,790, 6023))
+
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...){
+    #from help of pairs
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- abs(cor(x, y, use="pairwise.complete.obs"))
+    txt <- format(c(r, 0.123456789), digits = digits)[1]
+    txt <- paste0(prefix, txt)
+    if(missing(cex.cor)) cex.cor <- 0.5/strwidth(txt)
+    text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+```
+
+### Matrix plot to compare est MD
+```{r}
+matrix_df <- cbind(res.cont.md %>% filter(outcome=='MD') %>% select(MA.id, modelname, est) %>% pivot_wider(names_from = modelname, values_from = est),
+                   res.cont.md.tau100$est)
+colnames(matrix_df) <- c('MA.id', 'IVFE MD', 'IVRE MD', 'HTEBayesian MD tau(0,50)', 'CTEBayesian MD', 'HTEBayesian MD tau(0,100)')
+col_order <- c('MA.id', 'IVFE MD', 'CTEBayesian MD', 'IVRE MD', 'HTEBayesian MD tau(0,50)', 'HTEBayesian MD tau(0,100)')
+matrix_df <- matrix_df[, col_order]
+#draw matrix plot
+
+pdf(file = "/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/matrix_md.pdf",  
+    width = 16, 
+    height = 9)
+
+pairs(matrix_df[,-1], 
+      upper.panel = panel.cor,
+      xlim = c(-100, 100),
+      ylim = c(-100, 100),
+      cex.axis = 1.2,
+      main = "MD EST",
+      panel= function(x,y,...){ 
+        points(x,y, cex=0.5, pch=20, col = rgb(red = 0, green = 0, blue = 0, alpha = 0.2)); 
+        abline(a=0, b=1, col = 'steelblue')})
+
+dev.off()
+```
+
+### Matrix plot to compare est Cohen's d
+```{r}
+#Drop MA with extreme values (est<-5, est>5), MA.id = 9, 596, 326, 673, 674.
+matrix_df <- cbind(res.cont.sd %>% filter(outcome=="Cohen's d", modelname %in% c('ivre', 'ivfe')) %>% select(MA.id, modelname, est) %>% pivot_wider(names_from = modelname, values_from = est), 
+                   res.cont.sd %>% filter(outcome=="Hedge's g", modelname %in% c('ivre', 'ivfe')) %>% select(MA.id, modelname, est) %>% pivot_wider(names_from = modelname, values_from = est))
+matrix_df <- matrix_df[, -4]
+colnames(matrix_df) <- c('MA.id', "IVFE Cohen's d", "IVRE Cohen's d", "IVFE Hedge's g", "IVRE Hedge's g")
+
+pdf(file = "/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/matrix_dg.png",  
+    width = 16, 
+    height = 9)
+#draw matrix plot
+pairs(matrix_df[,-1], 
+      upper.panel = panel.cor,
+      xlim = c(-5, 5),
+      ylim = c(-5, 5),
+      cex.axis = 1.2,
+      main = "Cohen's d EST",
+      panel= function(x,y,...){ 
+        points(x,y, cex=0.5, pch=20, col = rgb(red = 0, green = 0, blue = 0, alpha = 0.2)); 
+        abline(a=0, b=1, col = 'steelblue')})
+
+dev.off()
+```
+
+### Matrix plot for est Hedge's g
+```{r}
+#Drop MA give extreme values (est<-2, est>-2), MA.id=9,132,136,180,524,596,703,738,875,326,673,674,789,790
+matrix_df <- res.cont %>% filter(outcome=="Hedge's g") %>% select(MA.id, modelname, est) %>% pivot_wider(names_from = modelname, values_from = est)
+colnames(matrix_df) <- c('MA.id', "IVFE Hedge's g", "IVRE Hedge's g", "HTEBayesian Hedge's g", "CTEBayesian Hedge's g")
+col_order <- c('MA.id', "IVFE Hedge's g", "CTEBayesian Hedge's g", "IVRE Hedge's g", "HTEBayesian Hedge's g")
+matrix_df <- matrix_df[, col_order]
+#draw matrix plot
+pairs(matrix_df[,-1], 
+      upper.panel = panel.cor,
+      #xlim = c(-300, 100),
+      #ylim = c(-300, 100),
+      cex.axis = 0.5,
+      main = "Hedge's g EST",
+      panel= function(x,y,...){ 
+        points(x,y, cex=0.5, pch=20); 
+        abline(a=0, b=1, col = 'steelblue')})
+```
+
+### Matrix plot for tau MD
+```{r}
+matrix_df <- cbind(res.cont.md %>% filter(outcome=='MD', modelname %in% c('ivre', 'htebayesian')) %>% select(MA.id, modelname, tau) %>% pivot_wider(names_from = modelname, values_from = tau),
+                   res.cont.md.tau100$tau)
+colnames(matrix_df) <- c('MA.id', 'tau IVRE', 'tau HTEBayesian tau(0,50)', 'tau HTEBayesian tau(0,100)')
+#draw matrix plot
+
+pdf(file = "/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/matrix_tau_md.png",  
+    width = 16, 
+    height = 9)
+
+pairs(matrix_df[,-1], 
+      upper.panel = panel.cor,
+      xlim = c(0, 100),
+      ylim = c(0, 100),
+      cex.axis = 1.2,
+      main = "tau of MD ",
+      panel= function(x,y,...){ 
+        points(x,y, cex=0.5, pch=20, col = rgb(red = 0, green = 0, blue = 0, alpha = 0.2)); 
+        abline(a=0, b=1, col = 'steelblue')})
+
+dev.off()
+```
+
+### Matrix plot for se of MD, Cohen's d, Hedge's g
+```{r}
+matrix_df <- cbind(res.cont.md %>% select(MA.id, modelname, se, outcome) %>% pivot_wider(names_from = modelname, values_from = se),
+                   res.cont.md.tau100$se)
+colnames(matrix_df) <- c('MA.id', "outcome", "IVFE SE", "IVRE SE", "HTEBayesian SE tau(0,50)", "CTEBayesian SE", "HTEBayesian SE tau(0,100)")
+
+col_order <- c('MA.id',"outcome", "IVFE SE", "CTEBayesian SE", "IVRE SE", "HTEBayesian SE tau(0,50)", "HTEBayesian SE tau(0,100)")
+matrix_df <- matrix_df[, col_order]
+#draw matrix plot SE of MD
+pdf(file = "/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/matrix_se_md.png",  
+    width = 16, 
+    height = 9)
+pairs(matrix_df[,-c(1,2)], 
+      upper.panel = panel.cor,
+      xlim = c(0, 70),
+      ylim = c(0, 70),
+      cex.axis = 1.2,
+      main = "Standard error of MD",
+      panel= function(x,y,...){ 
+        points(x,y, cex=0.5, pch=20, col = rgb(red = 0, green = 0, blue = 0, alpha = 0.2)); 
+        abline(a=0, b=1, col = 'steelblue')})
+dev.off()
+```
+
+```{r}
+matrix_df <- res.cont.sd %>% filter(modelname %in% c('ivfe', 'ivre'), outcome %in% c("Cohen's d", "Hedge's g")) %>% select(MA.id, modelname, se, outcome) %>% pivot_wider(names_from = c(modelname,outcome), values_from = se)
+colnames(matrix_df) <- c('MA.id', "IVFE SE Cohen's d", "IVRE SE Cohen's d", "IVFE SE Hedge's g", "IVRE SE Hedge's g")
+
+#draw matrix plot SE of Cohen's d
+#draw matrix plot SE of Hedge's g
+pdf(file = "/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/matrix_se_dg.png",  
+    width = 16, 
+    height = 9)
+pairs(matrix_df[,-1], 
+      upper.panel = panel.cor,
+      xlim = c(0, 1.5),
+      ylim = c(0, 1.5),
+      cex.axis = 1.2,
+      main = "SE of Cohen's d and Hedge's g",
+      panel= function(x,y,...){ 
+        points(x,y, cex=0.5, pch=20, col = rgb(red = 0, green = 0, blue = 0, alpha = 0.2)); 
+        abline(a=0, b=1, col = 'steelblue')})
+dev.off()
+```
+SE of MD from frequentist models are larger than SE of MD from Bayesian models.
+
+SE of SMD(cohen's d and hedge's g) from frequentist models are smaller than SE of SMD from Bayesian models.
+
+### Matrix plot of tau MD, Cohen's d, Hedge's g
+```{r}
+matrix_df <- res.cont %>% filter(modelname=='ivre'|modelname=='htebayesian') %>%  select(MA.id, modelname, tau, outcome) %>% pivot_wider(names_from = modelname, values_from = tau)
+colnames(matrix_df) <- c('MA.id', "outcome", "IVRE TAU", "HTEBayesian TAU")
+col_order <- c('MA.id',"outcome", "IVRE TAU", "HTEBayesian TAU")
+matrix_df <- matrix_df[, col_order]
+
+df <- cbind(matrix_df %>% filter(outcome=='MD'),
+            matrix_df %>% filter(outcome=="Cohen's d") %>% select(`IVRE TAU`, `HTEBayesian TAU`),
+            matrix_df %>% filter(outcome=="Hedge's g") %>% select(`IVRE TAU`, `HTEBayesian TAU`))
+colnames(df) <- c('MA.id', 'outcome', "IVRE TAU MD", "HTEBayesian TAU MD",
+                  "IVRE TAU Cohen's d", "HTEBayesian TAU Cohen's d",
+                  "IVRE TAU Hedge's g", "HTEBayesian TAU Hedge's g")
+
+#draw matrix plot for tau
+pairs(df[,-c(1,2)], 
+      upper.panel = panel.cor,
+      xlim = c(0, 150),
+      ylim = c(0, 50),
+      cex.axis = 0.3,
+      main = "TAU of MD, Cohen's d, Hedge's g",
+      panel= function(x,y,...){ 
+        points(x,y, cex=0.5, pch=20); 
+        abline(a=0, b=1, col = 'steelblue')})
+```
+
+955/1018 IVRE TAU Hedge's g =0.
+
+### tau frequentist approach
+```{r}
+#Only include tau<500
+gg_df <- cbind(res.cont.md %>% filter(modelname=='ivre', outcome=='MD') %>% select(MA.id, outcome, tau, est),
+               res.cont.md %>% filter(modelname=='ivfe', outcome=='MD') %>% select(est))
+colnames(gg_df) <- c('MA.id', 'outcome', 'tau IVRE', 'est IVRE', 'est IVFE')
+gg_df <- gg_df %>% filter(`tau IVRE`<500)
+gg_df$diff_est <- gg_df$`est IVRE`-gg_df$`est IVFE`
+mean_diff <- mean(gg_df$diff_est)
+lower <- mean_diff - 1.96*sd(gg_df$diff_est)
+upper <- mean_diff + 1.96*sd(gg_df$diff_est)
+#draw plot of tau vs diff_est MD
+p1 <- gg_df %>% 
+  ggplot(aes(x=`tau IVRE`, y=diff_est))+ 
+  geom_point(alpha=0.3, size=0.2)+
+  theme_classic()+
+  ylab('MD IVRE - MD IVFE')+
+  #geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed")+
+  annotate("label", 400, mean_diff, label="Mean diff(-0.2313)", colour="red", label.size=0, size=2)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed")+
+  annotate("label", 400, lower, label="Mean diff-1.96*SD", colour="blue", label.size=0, size=2)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed")+
+  annotate("label", 400, upper, label="Mean diff+1.96*SD", colour="blue", label.size=0, size=2)+
+  ggtitle('tau IVRE MD vs MD IVRE - MD IVFE')+
+  theme(text = element_text(size = 7))
+p1
+
+gg_df <- cbind(res.cont.md %>% filter(modelname=='htebayesian', outcome=='MD') %>% select(MA.id, outcome, tau, est),
+               res.cont.md %>% filter(modelname=='ctebayesian', outcome=='MD') %>% select(est))
+colnames(gg_df) <- c('MA.id', 'outcome', 'tau htebayesian', 'est htebayesian', 'est ctebayesian')
+gg_df$diff_est <- gg_df$`est htebayesian`-gg_df$`est ctebayesian`
+mean_diff <- mean(gg_df$diff_est)
+lower <- mean_diff - 1.96*sd(gg_df$diff_est)
+upper <- mean_diff + 1.96*sd(gg_df$diff_est)
+#draw plot of tau vs diff_est MD
+p2 <- gg_df %>% filter(diff_est<500 & diff_est>-500 & `tau htebayesian`<48) %>% 
+  ggplot(aes(x=`tau htebayesian`, y=diff_est))+ 
+  geom_point(alpha=0.3, size=0.2)+
+  theme_classic()+
+  ylab('MD htebayesian tau(0,2) - MD ctebayesian')+
+  xlim(0,60)+
+  ylim(-250, 500)+
+  #geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed")+
+  annotate("label", 55, mean_diff, label="Mean diff(1.1224)", colour="red", label.size=0, size=2)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed")+
+  annotate("label", 55, lower, label="Mean diff-1.96*SD", colour="blue", label.size=0, size=2)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed")+
+  annotate("label", 55, upper, label="Mean diff+1.96*SD", colour="blue", label.size=0, size=2)+
+  ggtitle('tau htebayesian (0,50) vs MD htebayesian - MD ctebayesian')+
+  theme(text = element_text(size = 7))
+p2
+
+gg_df <- cbind(res.cont.md %>% filter(modelname=='ctebayesian', outcome=='MD') %>% select(MA.id, outcome, est),
+               res.cont.md.tau100 %>% select(tau,est))
+colnames(gg_df) <- c('MA.id', 'outcome', 'est ctebayesian', 'tau htebayesian tau(0,100)', 'est htebayesian tau(0,100)')
+gg_df$diff_est <- gg_df$`est htebayesian tau(0,100)`-gg_df$`est ctebayesian`
+mean_diff <- mean(gg_df$diff_est)
+lower <- mean_diff - 1.96*sd(gg_df$diff_est)
+upper <- mean_diff + 1.96*sd(gg_df$diff_est)
+
+p3 <- gg_df %>% filter(diff_est<500 & diff_est>-500, `tau htebayesian tau(0,100)`<98) %>% 
+  ggplot(aes(x=`tau htebayesian tau(0,100)`, y=diff_est))+ 
+  geom_point(alpha=0.3, size=0.2)+
+  theme_classic()+
+  xlim(0, 120)+
+  ylim(-250, 500)+
+  ylab('MD htebayesian tau(0,100) - MD ctebayesian')+
+  #geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed")+
+  annotate("label", 110, mean_diff, label="Mean diff(1.6623)", colour="red", label.size=0, size=2)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed")+
+  annotate("label", 110, lower, label="Mean diff-1.96*SD", colour="blue", label.size=0, size=2)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed")+
+  annotate("label", 110, upper, label="Mean diff+1.96*SD", colour="blue", label.size=0, size=2)+
+  ggtitle('tau htebayesian (0,100) vs MD htebayesian - MD ctebayesian')+
+  theme(text = element_text(size = 7))
+p3
+```
+
+```{r}
+layout <- '
+A##
+BC#
+'
+wrap_plots(A = p1, B = p2, C = p3, design = layout)
+ggsave(file = "/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/tau_diff_est_md.png",
+      width = 7, height = 8, units = "in")
+```
+
+```{r}
+#draw plot of tau vs diff_est Cohen's d
+gg_df <- cbind(res.cont.sd %>% filter(modelname=='ivre', outcome=="Cohen's d") %>% select(MA.id, outcome, tau, est),
+               res.cont.sd %>% filter(modelname=='ivfe', outcome=="Cohen's d") %>% select(est))
+colnames(gg_df) <- c('MA.id', 'outcome', 'tau IVRE', 'est IVRE', 'est IVFE')
+gg_df$diff_est <- gg_df$`est IVRE`-gg_df$`est IVFE`
+mean_diff <- mean(gg_df$diff_est)
+lower <- mean_diff - 1.96*sd(gg_df$diff_est)
+upper <- mean_diff + 1.96*sd(gg_df$diff_est)
+p1 <- gg_df %>% 
+  ggplot(aes(x=`tau IVRE`, y=diff_est))+ 
+  geom_point(alpha=0.3, size=0.2)+
+  theme_classic()+
+  ylab("Cohen's d IVRE - Cohen's d IVFE")+
+  #geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed")+
+  annotate("label", 2, mean_diff, label="Mean diff(-0.0165)", colour="red", label.size=0, size=2)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed")+
+  annotate("label", 2, lower, label="Mean diff-1.96*SD", colour="blue", label.size=0, size=2)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed")+
+  annotate("label", 2, upper, label="Mean diff+1.96*SD", colour="blue", label.size=0, size=2)+
+  ggtitle("tau IVRE vs Cohen's d IVRE - Cohen's d IVFE")+
+  theme(text = element_text(size = 7))
+p1
+#draw plot of tau vs Hedge's g ivre - Hedge's g ivfe
+gg_df <- cbind(res.cont.sd %>% filter(modelname=='ivre', outcome=="Hedge's g") %>% select(MA.id, outcome, tau, est),
+               res.cont.sd %>% filter(modelname=='ivfe', outcome=="Hedge's g") %>% select(est))
+colnames(gg_df) <- c('MA.id', 'outcome', 'tau IVRE', 'est IVRE', 'est IVFE')
+gg_df$diff_est <- gg_df$`est IVRE`-gg_df$`est IVFE`
+mean_diff <- mean(gg_df$diff_est)
+lower <- mean_diff - 1.96*sd(gg_df$diff_est)
+upper <- mean_diff + 1.96*sd(gg_df$diff_est)
+
+p2 <- gg_df  %>%
+  ggplot(aes(x=`tau IVRE`, y=diff_est))+ 
+  geom_point(alpha=0.3, size=0.2)+
+  theme_classic()+
+  ylab("Hedge's g IVRE - Hedge's g IVFE")+
+  #geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed")+
+  annotate("label", 2.5, mean_diff, label="Mean diff(-0.0009)", colour="red", label.size=0, size=2)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed")+
+  annotate("label", 2.5, lower, label="Mean diff-1.96*SD", colour="blue", label.size=0, size=2)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed")+
+  annotate("label", 2.5, upper, label="Mean diff+1.96*SD", colour="blue", label.size=0, size=2)+
+  ggtitle("tau IVRE vs Hedge's g IVRE - Hedge's g IVFE")+
+  theme(text = element_text(size = 7))
+p2
+```
+
+```{r}
+ggarrange(p1, p2, nrow=1)
+ggsave(file = "/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/tau_diff_est_dg.pdf",
+      width = 7, height = 3.5, units = "in")
+```
+
+```{r}
+#Change in percent MD
+gg_df <- cbind(res.cont %>% filter(modelname=='ivre', outcome=='MD') %>% select(MA.id, outcome, tau, est),
+               res.cont %>% filter(modelname=='ivfe', outcome=='MD') %>% select(est))
+colnames(gg_df) <- c('MA.id', 'outcome', 'tau IVRE', 'est IVRE', 'est IVFE')
+gg_df$percent_change <- (gg_df$`est IVRE`-gg_df$`est IVFE`)*100/gg_df$`est IVFE`
+mean_perc_change <- mean(gg_df$percent_change)
+lower <- mean_perc_change - 1.96*sd(gg_df$percent_change)
+upper <- mean_perc_change + 1.96*sd(gg_df$percent_change)
+gg_df %>% 
+  ggplot(aes(x=`tau IVRE`, y=percent_change))+ 
+  geom_point()+
+  theme_classic()+
+  ylab('percentage change (IVRE-IVFE)/IVFE')+
+  #geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+  geom_abline(intercept = mean_perc_change, slope = 0, color = 'red', linetype="dashed")+
+  annotate("label", 150, mean_perc_change, label="Mean percent change(-14.3160)", colour="red", label.size=0)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed")+
+  annotate("label", 150, lower, label="Mean diff-1.96*SD", colour="blue", label.size=0)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed")+
+  annotate("label", 150, upper, label="Mean diff+1.96*SD", colour="blue", label.size=0)+
+  ggtitle('Tau IVRE vs Percent change in MD')
+
+#draw plot of tau vs percent change in Cohen's d
+gg_df <- cbind(res.cont %>% filter(modelname=='ivre', outcome=="Cohen's d") %>% select(MA.id, outcome, tau, est),
+               res.cont %>% filter(modelname=='ivfe', outcome=="Cohen's d") %>% select(est))
+colnames(gg_df) <- c('MA.id', 'outcome', 'tau IVRE', 'est IVRE', 'est IVFE')
+gg_df$percent_change <- (gg_df$`est IVRE`-gg_df$`est IVFE`)*100/gg_df$`est IVFE`
+mean_perc_change <- mean(gg_df$percent_change)
+lower <- mean_perc_change - 1.96*sd(gg_df$percent_change)
+upper <- mean_perc_change + 1.96*sd(gg_df$percent_change)
+
+gg_df %>% 
+  ggplot(aes(x=`tau IVRE`, y=percent_change))+ 
+  geom_point()+
+  theme_classic()+
+  ylab("percentage change (IVRE-IVFE)/IVFE")+
+  #geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed")+
+  annotate("label", 2, mean_perc_change, label="Mean percent change (18.8450)", colour="red", label.size=0)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed")+
+  annotate("label", 2, lower, label="Mean diff-1.96*SD", colour="blue", label.size=0)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed")+
+  annotate("label", 2, upper, label="Mean diff+1.96*SD", colour="blue", label.size=0)+
+  ggtitle("tau IVRE vs percent change in Cohen's d")
+
+#draw plot of tau vs percent change in Hedge's g
+gg_df <- cbind(res.cont %>% filter(modelname=='ivre', outcome=="Hedge's g") %>% select(MA.id, outcome, tau, est),
+               res.cont %>% filter(modelname=='ivfe', outcome=="Hedge's g") %>% select(est))
+colnames(gg_df) <- c('MA.id', 'outcome', 'tau IVRE', 'est IVRE', 'est IVFE')
+gg_df$percent_change <- (gg_df$`est IVRE`-gg_df$`est IVFE`)*100/gg_df$`est IVFE`
+mean_perc_change <- mean(gg_df$percent_change)
+lower <- mean_perc_change - 1.96*sd(gg_df$percent_change)
+upper <- mean_perc_change + 1.96*sd(gg_df$percent_change)
+
+gg_df %>% 
+  ggplot(aes(x=`tau IVRE`, y=percent_change))+ 
+  geom_point()+
+  theme_classic()+
+  ylab("percentage change (IVRE-IVFE)/IVFE")+
+  #geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed")+
+  annotate("label", 2, mean_perc_change, label="Mean percent change (-0.2287)", colour="red", label.size=0)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed")+
+  annotate("label", 2, lower, label="Mean diff-1.96*SD", colour="blue", label.size=0)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed")+
+  annotate("label", 2, upper, label="Mean diff+1.96*SD", colour="blue", label.size=0)+
+  ggtitle("tau IVRE vs percent change in Hedge's d")
+```
+
+### tau vs bayesian approach
+```{r}
+gg_df <- cbind(res.cont %>% filter(modelname=='htebayesian', outcome=='MD') %>% select(MA.id, outcome, tau, est),
+               res.cont %>% filter(modelname=='ctebayesian', outcome=='MD') %>% select(est))
+colnames(gg_df) <- c('MA.id', 'outcome', 'tau htebayesian', 'est htebayesian', 'est ctebayesian')
+gg_df$diff_est <- gg_df$`est htebayesian`-gg_df$`est ctebayesian`
+mean_diff <- mean(gg_df$diff_est)
+lower <- mean_diff - 1.96*sd(gg_df$diff_est)
+upper <- mean_diff + 1.96*sd(gg_df$diff_est)
+#draw plot of tau vs diff_est MD
+gg_df %>% 
+  ggplot(aes(x=`tau htebayesian`, y=diff_est))+ 
+  geom_point()+
+  theme_classic()+
+  ylab('MD htebayesian - MD ctebayesian')+
+  #geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed")+
+  annotate("label", 45, mean_diff, label="Mean diff(-0.1635)", colour="red", label.size=0)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed")+
+  annotate("label", 45, lower, label="Mean diff-1.96*SD", colour="blue", label.size=0)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed")+
+  annotate("label", 45, upper, label="Mean diff+1.96*SD", colour="blue", label.size=0)+
+  ggtitle('tau htebayesian vs MD htebayesian - MD ctebayesian')
+
+#draw plot of tau vs diff_est Cohen's d
+gg_df <- cbind(res.cont %>% filter(modelname=='htebayesian', outcome=="Cohen's d") %>% select(MA.id, outcome, tau, est),
+               res.cont %>% filter(modelname=='ctebayesian', outcome=="Cohen's d") %>% select(est))
+colnames(gg_df) <- c('MA.id', 'outcome', 'tau htebayesian', 'est htebayesian', 'est ctebayesian')
+gg_df$diff_est <- gg_df$`est htebayesian`-gg_df$`est ctebayesian`
+mean_diff <- mean(gg_df$diff_est)
+lower <- mean_diff - 1.96*sd(gg_df$diff_est)
+upper <- mean_diff + 1.96*sd(gg_df$diff_est)
+
+gg_df %>% 
+  ggplot(aes(x=`tau htebayesian`, y=diff_est))+ 
+  geom_point()+
+  theme_classic()+
+  ylab("Cohen's d htebayesian - Cohen's d ctebayesian")+
+  #geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed")+
+  annotate("label", 5, mean_diff, label="Mean diff(-0.4196)", colour="red", label.size=0)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed")+
+  annotate("label", 5, lower, label="Mean diff-1.96*SD", colour="blue", label.size=0)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed")+
+  annotate("label", 5, upper, label="Mean diff+1.96*SD", colour="blue", label.size=0)+
+  ggtitle("tau htebayesian vs Cohen's d htebayesian - Cohen's d ctebayesian")
+
+#draw plot of tau vs Hedge's g ivre - Hedge's g ivfe
+gg_df <- cbind(res.cont %>% filter(modelname=='htebayesian', outcome=="Hedge's g") %>% select(MA.id, outcome, tau, est),
+               res.cont %>% filter(modelname=='ctebayesian', outcome=="Hedge's g") %>% select(est))
+colnames(gg_df) <- c('MA.id', 'outcome', 'tau htebayesian', 'est htebayesian', 'est ctebayesian')
+gg_df$diff_est <- gg_df$`est htebayesian`-gg_df$`est ctebayesian`
+mean_diff <- mean(gg_df$diff_est)
+lower <- mean_diff - 1.96*sd(gg_df$diff_est)
+upper <- mean_diff + 1.96*sd(gg_df$diff_est)
+
+gg_df %>% 
+  ggplot(aes(x=`tau htebayesian`, y=diff_est))+ 
+  geom_point()+
+  theme_classic()+
+  ylab("Hedge's g htebayesian - Hedge's g ctebayesian")+
+  #geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed")+
+  annotate("label", 2, mean_diff, label="Mean diff(-0.3778)", colour="red", label.size=0)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed")+
+  annotate("label", 2, lower, label="Mean diff-1.96*SD", colour="blue", label.size=0)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed")+
+  annotate("label", 2, upper, label="Mean diff+1.96*SD", colour="blue", label.size=0)+
+  ggtitle("tau htebayesian vs Hedge's g htebayesian - Hedge's g ctebayesian")
+```
+
+```{r}
+#Change in percent MD
+gg_df <- cbind(res.cont %>% filter(modelname=='htebayesian', outcome=='MD') %>% select(MA.id, outcome, tau, est),
+               res.cont %>% filter(modelname=='ctebayesian', outcome=='MD') %>% select(est))
+colnames(gg_df) <- c('MA.id', 'outcome', 'tau htebayesian', 'est htebayesian', 'est ctebayesian')
+gg_df$percent_change <- (gg_df$`est htebayesian`-gg_df$`est ctebayesian`)*100/gg_df$`est ctebayesian`
+mean_perc_change <- mean(gg_df$percent_change)
+lower <- mean_perc_change - 1.96*sd(gg_df$percent_change)
+upper <- mean_perc_change + 1.96*sd(gg_df$percent_change)
+#draw plot of tau vs diff_est MD
+gg_df %>% 
+  ggplot(aes(x=`tau htebayesian`, y=percent_change))+ 
+  geom_point()+
+  theme_classic()+
+  ylab('percentage change (htebayesian-ctebayesian)/ctebayesian in MD')+
+  #geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed")+
+  annotate("label", 45, mean_diff, label="Mean percent change (2.8877)", colour="red", label.size=0)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed")+
+  annotate("label", 45, lower, label="Mean diff-1.96*SD", colour="blue", label.size=0)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed")+
+  annotate("label", 45, upper, label="Mean diff+1.96*SD", colour="blue", label.size=0)+
+  ggtitle('tau htebayesian vs percent change in MD')
+
+#percent change in Cohen's d
+gg_df <- cbind(res.cont %>% filter(modelname=='htebayesian', outcome=="Cohen's d") %>% select(MA.id, outcome, tau, est),
+               res.cont %>% filter(modelname=='ctebayesian', outcome=="Cohen's d") %>% select(est))
+colnames(gg_df) <- c('MA.id', 'outcome', 'tau htebayesian', 'est htebayesian', 'est ctebayesian')
+gg_df$percent_change <- (gg_df$`est htebayesian`-gg_df$`est ctebayesian`)*100/gg_df$`est ctebayesian`
+mean_perc_change <- mean(gg_df$percent_change)
+lower <- mean_perc_change - 1.96*sd(gg_df$percent_change)
+upper <- mean_perc_change + 1.96*sd(gg_df$percent_change)
+
+gg_df %>% 
+  ggplot(aes(x=`tau htebayesian`, y=percent_change))+ 
+  geom_point()+
+  theme_classic()+
+  ylab("percentage change (htebayesian-ctebayesian)/ctebayesian in Cohen's d")+
+  #geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed")+
+  annotate("label", 45, mean_diff, label="Mean percent change (-5.9507)", colour="red", label.size=0)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed")+
+  annotate("label", 45, lower, label="Mean diff-1.96*SD", colour="blue", label.size=0)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed")+
+  annotate("label", 45, upper, label="Mean diff+1.96*SD", colour="blue", label.size=0)+
+  ggtitle("tau htebayesian vs percentage change in Cohen's d")
+
+#Percent change in Hedge's g
+gg_df <- cbind(res.cont %>% filter(modelname=='htebayesian', outcome=="Hedge's g") %>% select(MA.id, outcome, tau, est),
+               res.cont %>% filter(modelname=='ctebayesian', outcome=="Hedge's g") %>% select(est))
+colnames(gg_df) <- c('MA.id', 'outcome', 'tau htebayesian', 'est htebayesian', 'est ctebayesian')
+gg_df$percent_change <- (gg_df$`est htebayesian`-gg_df$`est ctebayesian`)*100/gg_df$`est ctebayesian`
+mean_perc_change <- mean(gg_df$percent_change)
+lower <- mean_perc_change - 1.96*sd(gg_df$percent_change)
+upper <- mean_perc_change + 1.96*sd(gg_df$percent_change)
+
+gg_df %>% 
+  ggplot(aes(x=`tau htebayesian`, y=percent_change))+ 
+  geom_point()+
+  theme_classic()+
+  ylab("percentage change (htebayesian-ctebayesian)/ctebayesian in Hedge's g")+
+  #geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed")+
+  annotate("label", 45, mean_diff, label="Mean diff(-5.0107)", colour="red", label.size=0)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed")+
+  annotate("label", 45, lower, label="Mean diff-1.96*SD", colour="blue", label.size=0)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed")+
+  annotate("label", 45, upper, label="Mean diff+1.96*SD", colour="blue", label.size=0)+
+  ggtitle("tau htebayesian vs percent change in Hedge's g ")
+```
+
+### tau IVRE vs diff in se of MD
+```{r message=FALSE, warning=FALSE}
+#tau ivre vs difference in se of MD 
+gg_df <- cbind(res.cont.md %>% filter(modelname=='ivfe', outcome=='MD') %>% select(se), 
+      res.cont.md %>% filter(modelname=='ivre', outcome=='MD') %>% select(tau, se, MA.id))
+colnames(gg_df) <- c('ivfe_se', 'ivre_tau', 'ivre_se', 'MA.id')
+gg_df$diff_se <-gg_df$ivre_se-gg_df$ivfe_se
+
+p1 <- gg_df %>% ggplot(aes(x=ivre_tau, y=diff_se))+
+  geom_point(alpha=0.3, size=0.2)+
+  theme_classic()+
+  ylab('IVRE SE-IVFE SE')+
+  ggtitle('tau IVRE vs difference in se of MD')+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  geom_smooth(method=lm, se = FALSE, color='black', size=0.2)+
+  #stat_cor(method = "spearman", label.x = 25, label.y = 300, size=2.5)+
+  annotate("text",x=150, y=320, size=2.5,
+             label = paste("Spearman R=0.99
+             p<0.0001"))+
+  theme(text = element_text(size = 7))
+p1
+
+#tau htebayesian vs diff in se MD
+gg_df <- cbind(res.cont.md %>% filter(modelname=='ctebayesian', outcome=='MD') %>% select(se), 
+      res.cont.md %>% filter(modelname=='htebayesian', outcome=='MD') %>% select(tau, se, MA.id))
+colnames(gg_df) <- c('ctebayesian_se', 'htebayesian_tau', 'htebayesian_se', 'MA.id')
+gg_df$diff_se <-gg_df$htebayesian_se-gg_df$ctebayesian_se
+
+p2 <- gg_df %>% ggplot(aes(x=htebayesian_tau, y=diff_se))+
+  geom_point(alpha=0.3, size=0.2)+
+  theme_classic()+
+  ggtitle('tau htebayesian tau(0,50) vs difference in se MD')+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  geom_smooth(method=lm, se = FALSE, color='black', size=0.2)+
+  annotate("text",x=10,y=15,size=2.5,
+             label = paste("Spearman R=0.96
+             p<0.0001"))+
+  theme(text = element_text(size = 7))
+p2
+
+gg_df <- cbind(res.cont.md %>% filter(modelname=='ctebayesian', outcome=='MD') %>% select(se), 
+      res.cont.md.tau100 %>% select(tau, se, MA.id))
+colnames(gg_df) <- c('ctebayesian_se', 'htebayesian_tau', 'htebayesian_se', 'MA.id')
+gg_df$diff_se <-gg_df$htebayesian_se-gg_df$ctebayesian_se
+
+p3 <- gg_df %>% ggplot(aes(x=htebayesian_tau, y=diff_se))+
+  geom_point(alpha=0.3, size=0.2)+
+  theme_classic()+
+  ggtitle('tau htebayesian tau(0,100) vs difference in se MD')+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  geom_smooth(method=lm, se = FALSE, color='black', size=0.2)+
+  annotate("text",x=25,y=23,size=2.5,
+             label = paste("Spearman R=0.96
+             p<0.0001"))+
+  theme(text = element_text(size = 7))
+p3
+```
+
+```{r}
+layout <- '
+A#
+BC
+'
+wrap_plots(A = p1, B = p2, C = p3, design = layout)
+ggsave(file = "/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/tau_diff_se_MD.png",
+      width = 7, height = 8, units = "in")
+```
+
+```{r message=FALSE, warning=FALSE}
+#tau ivre vs se of Cohen's d 
+gg_df <- cbind(res.cont.sd %>% filter(modelname=='ivfe', outcome=="Cohen's d") %>% select(se), 
+      res.cont.sd %>% filter(modelname=='ivre', outcome=="Cohen's d") %>% select(tau, se, MA.id))
+colnames(gg_df) <- c('ivfe_se', 'ivre_tau', 'ivre_se', 'MA.id')
+gg_df$diff_se <-gg_df$ivre_se-gg_df$ivfe_se
+
+p1 <- gg_df %>% ggplot(aes(x=ivre_tau, y=diff_se))+
+  geom_point(alpha=0.3, size=0.2)+
+  theme_classic()+
+  ggtitle("tau IVRE vs difference in se Cohen's d")+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  geom_smooth(method=lm, se = FALSE, color='black', size=0.2)+
+  #stat_cor(method = "spearman", label.x = 0.15, label.y = 0.6)+
+  annotate("text",x=0.5, y=0.65,size=2.5,
+             label = paste("Spearman R=0.98
+             p<0.0001"))+
+  theme(text = element_text(size = 7))
+p1
+#tau ivre vs se of lor Hedge's g
+gg_df <- cbind(res.cont.sd %>% filter(modelname=='ivfe', outcome=="Hedge's g") %>% select(se), 
+      res.cont.sd %>% filter(modelname=='ivre', outcome=="Hedge's g") %>% select(tau, se, MA.id))
+colnames(gg_df) <- c('ivfe_se', 'ivre_tau', 'ivre_se', 'MA.id')
+gg_df$diff_se <-gg_df$ivre_se-gg_df$ivfe_se
+
+p2 <- gg_df %>% ggplot(aes(x=ivre_tau, y=diff_se))+
+  geom_point(alpha=0.3, size=0.2)+
+  theme_classic()+
+  ggtitle("tau IVRE vs difference in se Hedge's g")+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  geom_smooth(method=lm, se = FALSE, color='black', size=0.2)+
+  #stat_cor(method = "spearman", label.x = 0.15, label.y = 0.7)+
+  annotate("text",x=0.75, y=0.75,size=2.5,
+             label = paste("Spearman R=1
+             p<0.0001"))+
+  theme(text = element_text(size = 7))
+p2
+
+ggarrange(p1, p2, nrow = 1)
+ggsave(file = "/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/tau_diff_se_dg.png",
+      width = 7, height =4, units = "in")
+```
+
+### tau ivre vs percent change in se of MD
+```{r}
+#tau ivre vs percent change in se of MD
+gg_df <- cbind(res.cont %>% filter(modelname=='ivfe', outcome=='MD') %>% select(se), 
+      res.cont %>% filter(modelname=='ivre', outcome=='MD') %>% select(tau, se, MA.id))
+colnames(gg_df) <- c('ivfe_se', 'ivre_tau', 'ivre_se', 'MA.id')
+gg_df$percent_change <-(gg_df$ivre_se-gg_df$ivfe_se)*100/gg_df$ivfe_se
+
+gg_df %>% ggplot(aes(x=ivre_tau, y=percent_change))+
+  geom_point()+
+  theme_classic()+
+  ggtitle('tau IVRE vs percent change in se (MD)')+
+  geom_abline(intercept = 0, slope = 0, color ='steelblue', size=0.7)+
+  geom_smooth(method=lm, se = FALSE, color='black')+
+  stat_cor(method = "spearman", label.x = 25, label.y = 4000)+
+  annotate("text",x=25, y=4200,
+             label = paste("Spearman"))
+
+#tau ivre vs percent change in se of Cohen's d
+gg_df <- cbind(res.cont %>% filter(modelname=='ivfe', outcome=="Cohen's d") %>% select(se), 
+      res.cont %>% filter(modelname=='ivre', outcome=="Cohen's d") %>% select(tau, se, MA.id))
+colnames(gg_df) <- c('ivfe_se', 'ivre_tau', 'ivre_se', 'MA.id')
+gg_df$percent_change <-(gg_df$ivre_se-gg_df$ivfe_se)*100/gg_df$ivfe_se
+
+gg_df %>% ggplot(aes(x=ivre_tau, y=percent_change))+
+  geom_point()+
+  theme_classic()+
+  ggtitle("tau IVRE vs percent change in se (Cohen's d)")+
+  geom_abline(intercept = 0, slope = 0, color ='steelblue', size=0.7)+
+  geom_smooth(method=lm, se = FALSE, color='black')+
+  annotate("text",x=0.2, y=2000,
+             label = paste("Spearman r = ", 
+                 signif(cor(gg_df$ivre_tau, gg_df$percent_change, method = "spearman"),2)))
+
+#tau ivre vs percent change in se of Hedge's g
+gg_df <- cbind(res.cont %>% filter(modelname=='ivfe', outcome=="Hedge's g") %>% select(se), 
+      res.cont %>% filter(modelname=='ivre', outcome=="Hedge's g") %>% select(tau, se, MA.id))
+colnames(gg_df) <- c('ivfe_se', 'ivre_tau', 'ivre_se', 'MA.id')
+gg_df$percent_change <-(gg_df$ivre_se-gg_df$ivfe_se)*100/gg_df$ivfe_se
+
+gg_df %>% ggplot(aes(x=ivre_tau, y=percent_change))+
+  geom_point()+
+  theme_classic()+
+  ggtitle("tau IVRE vs percent change in se (Hedge's g)")+
+  geom_abline(intercept = 0, slope = 0, color ='steelblue', size=0.7)+
+  geom_smooth(method=lm, se = FALSE, color='black')+
+  annotate("text",x=0.2, y=200,
+             label = paste("Spearman r = ", 
+                 signif(cor(gg_df$ivre_tau, gg_df$percent_change, method = "spearman"),2)))
+
+```
+
+### tau htebayesian vs difference in se MD
+```{r}
+#tau htebayesian vs diff in se MD
+gg_df <- cbind(res.cont %>% filter(modelname=='ctebayesian', outcome=='MD') %>% select(se), 
+      res.cont %>% filter(modelname=='htebayesian', outcome=='MD') %>% select(tau, se, MA.id))
+colnames(gg_df) <- c('ctebayesian_se', 'htebayesian_tau', 'htebayesian_se', 'MA.id')
+gg_df$diff_se <-gg_df$htebayesian_se-gg_df$ctebayesian_se
+
+gg_df %>% ggplot(aes(x=htebayesian_tau, y=diff_se))+
+  geom_point()+
+  theme_classic()+
+  ggtitle('tau htebayesian vs difference in se (MD)')+
+  geom_abline(intercept = 0, slope = 0, color ='steelblue', size=0.7)+
+  geom_smooth(method=lm, se = FALSE, color='black')+
+  annotate("text",x=5,y=15,
+             label = paste("Spearman r = ", 
+                 signif(cor(gg_df$htebayesian_tau, gg_df$diff_se, method = "spearman"),2)))
+```
+
+### tau htebayesian vs percent change in se
+```{r}
+#tau htebayesian vs percent change in se
+gg_df <- cbind(res.cont %>% filter(modelname=='ctebayesian', outcome=='MD') %>% select(se), 
+      res.cont %>% filter(modelname=='htebayesian', outcome=='MD') %>% select(tau, se, MA.id))
+colnames(gg_df) <- c('ctebayesian_se', 'htebayesian_tau', 'htebayesian_se', 'MA.id')
+gg_df$percent_change <-(gg_df$htebayesian_se-gg_df$ctebayesian_se)*100/gg_df$ctebayesian_se
+
+gg_df %>% ggplot(aes(x=htebayesian_tau, y=percent_change))+
+  geom_point()+
+  theme_classic()+
+  ggtitle('tau htebayesian vs percent change in se (MD)')+
+  geom_abline(intercept = 0, slope = 0, color ='steelblue', size=0.7)+
+  geom_smooth(method=lm, se = FALSE, color='black')+
+  annotate("text",x=5, y=15000,
+             label = paste("Spearman r = ", 
+                 signif(cor(gg_df$htebayesian_tau, gg_df$percent_change, method = "spearman"),2)))
+```
+
+### Check convergence for studies that have converge problems
+```{r}
+id_tau50 <- res.cont.md %>% filter(modelname=='htebayesian', tau>49) %>% select(MA.id) %>% as.list()
+id_tau50 <- unlist(id_tau50)
+```
+
+```{r}
+id_tau100 <- res.cont.md.tau100 %>% filter(tau>99) %>% select(MA.id) %>% as.list()
+id_tau100 <- unlist(id_tau100)
+```
+
+```{r}
+# MAs in the id list cannot converge in either situation tau(0,50) tau(0,100)
+id <- intersect(id_tau100, id_tau50)
+```
+
+```{r}
+library(mcmcr)
+library(MCMCvis)
+library(coda)
+```
+
+```{r}
+cont.converge <- list()
+
+for (i in 1:length(id)) {
+  MA.id <- id[i]
+  data <- cont_MA[[MA.id]]
+#Check galman-rubin statistics
+  niter <- 25000
+  nburnin <- 5000
+  nchains <- 2 
+  nthin <- 1
+  NS <- nrow(data)
+  y <- data$y
+  sigma <- sqrt(data$s2)
+  init <- list(list(md=0, tau=0.5),
+               list(md=0.0001, tau=0.5))
+  para <- c("delta", "md", "tau")
+  jdata <- list(NS=NS, y=y, sigma=sigma)
+  fit.tau50 <- NULL
+  fit.tau50 <- try(
+    jags(data=jdata, inits=init, para,
+         n.iter=niter, n.burnin=nburnin, n.chains=nchains, n.thin=nthin,
+         DIC=TRUE, jags.seed=12345, progress.bar="text",
+         model.file=htecont.mod)
+  )
+  fit.tau100 <- NULL
+  fit.tau100 <- try(
+    jags(data=jdata, inits=init, para,
+         n.iter=niter, n.burnin=nburnin, n.chains=nchains, n.thin=nthin,
+         DIC=TRUE, jags.seed=12345, progress.bar="text",
+         model.file=htecont_tau100.mod)
+  )
+  mcmc.tau50 <- as.mcmc(fit.tau50)
+  gelman.tau50 <- gelman.diag(mcmc.tau50)
+  #gelman.plot(mcmc.tau50)
+  mpsrf.tau50 <- gelman.tau50$mpsrf
+
+  mcmc.tau100 <- as.mcmc(fit.tau100)
+  gelman.tau100 <- gelman.diag(mcmc.tau100)
+  mpsrf.tau100 <- gelman.tau100$mpsrf
+
+  #cbind(gelman.tau50$psrf, gelman.tau100$psrf)
+  cont.converge[[i]] <- data.frame(cbind(MA.id, mpsrf.tau50, mpsrf.tau100))
+}
+cont.converge <- rbindlist(cont.converge)
+```
+
+
+```{r}
+MCMCtrace(mcmc.converge,
+          ISB = FALSE,
+          exact = TRUE,
+          pdf = FALSE)
+```
+
+### ivre vs ivfe
+```{r}
+dat <- cbind(res.cont.md %>% filter(modelname=='ivfe') %>% select(MA.id, low, up, num_studies),
+             res.cont.md %>% filter(modelname=='ivre') %>% select(low, up))
+colnames(dat) <- c('MA.id', 'low_ivfe', 'up_ivfe', 'num_studies', 'low_ivre', 'up_ivre')
+
+dat %>% filter((low_ivfe>0|up_ivfe<0) & (low_ivre>0|up_ivre<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_ivfe>0|up_ivfe<0) & (low_ivre<0 & up_ivre>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter(low_ivfe<0 & up_ivfe>0 & (low_ivre>0 | up_ivre<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_ivfe<0 & up_ivfe>0) & (low_ivre<0 & up_ivre>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+```
+### HTE tau(0,50) vs CTE
+```{r}
+dat <- cbind(res.cont.md %>% filter(modelname=='ctebayesian') %>% select(MA.id, low, up, num_studies),
+             res.cont.md %>% filter(modelname=='htebayesian') %>% select(low, up))
+colnames(dat) <- c('MA.id', 'low_cte', 'up_cte', 'num_studies', 'low_hte', 'up_hte')
+
+dat %>% filter((low_cte>0|up_cte<0) & (low_hte>0|up_hte<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_cte>0|up_cte<0) & (low_hte<0 & up_hte>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter(low_cte<0 & up_cte>0 & (low_hte>0 | up_hte<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_cte<0 & up_cte>0) & (low_hte<0 & up_hte>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+```
+### HTE tau(0,100) vs CTE
+```{r}
+dat <- cbind(res.cont.md %>% filter(modelname=='ctebayesian') %>% select(MA.id, low, up, num_studies),
+            res.cont.md.tau100 %>% select(low, up))
+colnames(dat) <- c('MA.id', 'low_cte', 'up_cte', 'num_studies', 'low_hte', 'up_hte')
+
+dat %>% filter((low_cte>0|up_cte<0) & (low_hte>0|up_hte<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_cte>0|up_cte<0) & (low_hte<0 & up_hte>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter(low_cte<0 & up_cte>0 & (low_hte>0 | up_hte<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_cte<0 & up_cte>0) & (low_hte<0 & up_hte>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+```
+
+
+```{r}
+### ivfe vs ctebayesian
+```{r}
+dat <- cbind(res.cont.md %>% filter(modelname=='ctebayesian') %>% select(MA.id, low, up, num_studies),
+             res.cont.md %>% filter(modelname=='ivfe') %>% select(low, up))
+colnames(dat) <- c('MA.id', 'low_cte', 'up_cte', 'num_studies', 'low_ivfe', 'up_ivfe')
+
+dat %>% filter((low_cte>0|up_cte<0) & (low_ivfe>0|up_ivfe<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_cte>0|up_cte<0) & (low_ivfe<0 & up_ivfe>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter(low_cte<0 & up_cte>0 & (low_ivfe>0 | up_ivfe<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_cte<0 & up_cte>0) & (low_ivfe<0 & up_ivfe>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+```
+### IVRE vs hte tau(0, 50)
+```{r}
+dat <- cbind(res.cont.md %>% filter(modelname=='htebayesian') %>% select(MA.id, low, up, num_studies),
+             res.cont.md %>% filter(modelname=='ivre') %>% select(low, up))
+colnames(dat) <- c('MA.id', 'low_hte', 'up_hte', 'num_studies', 'low_ivre', 'up_ivre')
+
+dat %>% filter((low_hte>0|up_hte<0) & (low_ivre>0|up_ivre<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_hte>0|up_hte<0) & (low_ivre<0 & up_ivre>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter(low_hte<0 & up_hte>0 & (low_ivre>0 | up_ivre<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_hte<0 & up_hte>0) & (low_ivre<0 & up_ivre>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+```
+### IVRE vs htelogit tau(0, 100)
+```{r}
+dat <- cbind(res.cont.md.tau100 %>% select(MA.id, low, up, num_studies),
+             res.cont.md %>% filter(modelname=='ivre') %>% select(low, up))
+colnames(dat) <- c('MA.id', 'low_hte', 'up_hte', 'num_studies', 'low_ivre', 'up_ivre')
+
+dat %>% filter((low_hte>0|up_hte<0) & (low_ivre>0|up_ivre<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_hte>0|up_hte<0) & (low_ivre<0 & up_ivre>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter(low_hte<0 & up_hte>0 & (low_ivre>0 | up_ivre<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_hte<0 & up_hte>0) & (low_ivre<0 & up_ivre>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+```
+### hte tau(0,50) vs hte tau(0,100)
+```{r}
+dat <- cbind(res.cont.md.tau100 %>% select(MA.id, low, up, num_studies),
+             res.cont.md %>% filter(modelname=='htebayesian') %>% select(low, up))
+colnames(dat) <- c('MA.id', 'low_hte', 'up_hte', 'num_studies', 'low_hte50', 'up_hte50')
+
+dat %>% filter((low_hte>0|up_hte<0) & (low_hte50>0|up_hte50<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_hte>0|up_hte<0) & (low_hte50<0 & up_hte50>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter(low_hte<0 & up_hte>0 & (low_hte50>0 | up_hte50<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_hte<0 & up_hte>0) & (low_hte50<0 & up_hte50>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+```
+
+```{r}
+#ivre vs ivfe
+tab <- matrix(c(6079, 49, 1353, 2615), ncol = 2)
+chisq.test(tab, correct = FALSE)
+#HTE vs CTE
+tab <- matrix(c(2350, 3, 2269, 5473), ncol = 2)
+chisq.test(tab, correct = FALSE)
+#HTE vs CTE
+tab <- matrix(c(2238, 1, 2381, 5475), ncol = 2)
+chisq.test(tab, correct = FALSE)
+#cte vs ivfe
+tab <- matrix(c(3774, 845, 3657, 1819), ncol = 2)
+chisq.test(tab, correct = FALSE)
+#hte vs ivre
+tab <- matrix(c(2267, 86, 3860, 3882), ncol = 2)
+chisq.test(tab, correct = FALSE)
+#hte vs ivre
+tab <- matrix(c(2196, 43, 3931, 3925), ncol = 2)
+chisq.test(tab, correct = FALSE)
+#hte vs hte
+tab <- matrix(c(2215, 24, 138, 7718), ncol = 2)
+chisq.test(tab, correct = FALSE)
+```
+

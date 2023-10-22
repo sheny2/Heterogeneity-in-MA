@@ -1,0 +1,536 @@
+---
+title: "plots"
+author: "Ashley Hu"
+date: "26/03/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+slide13
+```{r message=FALSE, warning=FALSE}
+gg_df <- cbind(jags %>% filter(modelname=='ivre') %>% select(MA.id, est),
+               jags %>% filter(modelname=='ivfe') %>% select(est, event))
+colnames(gg_df) <- c('MA.id','ivre_est', 'ivfe_est','Event')
+p1 <- gg_df %>% 
+  ggplot(aes(x=ivfe_est, y=ivre_est))+ 
+  geom_point(alpha=0.2, size=0.3)+
+  theme_classic()+
+  ylab('LOR IVRE')+
+  xlab('LOR IVFE')+
+  xlim(-5, 5)+
+  ylim(-5, 5)+
+  geom_abline(intercept = 0, slope = 1, color ='royalblue', size=0.5)+
+  ggtitle('LOR IVFE vs LOR IVRE')+
+  theme(text = element_text(size = 12))
+p1
+ggsave('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/presentation/s13_p1.png',
+        width = 6, height = 4, units = "in")
+```
+
+```{r message=FALSE, warning=FALSE}
+gg_df <- cbind(jags %>% filter(modelname=='ctevaguelogit') %>% select(MA.id, est),
+               jags %>% filter(modelname=='htevaguelogit') %>% select(est, event))
+colnames(gg_df) <- c('MA.id','cte_est', 'hte_est','Event')
+p2 <- gg_df %>% 
+  ggplot(aes(x=cte_est, y=hte_est))+ 
+  geom_point(alpha=0.2, size=0.3)+
+  theme_classic()+
+  ylab('LOR HTElogit tau(0,2)')+
+  xlab('LOR CTElogit')+
+  xlim(-15, 5)+
+  ylim(-15, 5)+
+  geom_abline(intercept = 0, slope = 1, color ='royalblue', size=0.5)+
+  ggtitle('LOR CTElogit vs LOR HTElogit tau(0,2)')+
+  theme(text = element_text(size = 12))
+p2
+ggsave('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/presentation/s13_p2.png',
+       width = 6, height = 4, units = "in")
+```
+
+```{r message=FALSE, warning=FALSE}
+gg_df <- cbind(jags %>% filter(modelname=='ctevaguelogit') %>% select(MA.id, est),
+               hte.tau50 %>% select(est, event))
+colnames(gg_df) <- c('MA.id', 'cte_est', 'hte_est', 'Event')
+p3 <- gg_df %>% 
+  ggplot(aes(x=cte_est, y=hte_est))+ 
+  geom_point(alpha=0.2, size=0.3)+
+  theme_classic()+
+  ylab('LOR HTElogit tau(0,50)')+
+  xlab('LOR CTElogit')+
+  xlim(-15, 10)+
+  ylim(-15, 10)+
+  geom_abline(intercept = 0, slope = 1, color ='royalblue', size=0.5)+
+  ggtitle('LOR CTElogit vs LOR HTElogit tau(0,50)')+
+  theme(text = element_text(size = 12))
+p3
+ggsave('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/presentation/s13_p3.png',
+       width = 6, height = 4, units = "in")
+```
+
+```{r message=FALSE, warning=FALSE}
+gg_df <- cbind(jags %>% filter(modelname=='ctebeta') %>% select(MA.id, est),
+               jags %>% filter(modelname=='htebeta')  %>% select(est, event))
+colnames(gg_df) <- c('MA.id', 'cte_est', 'hte_est', 'Event')
+p4 <- gg_df %>% 
+  ggplot(aes(x=cte_est, y=hte_est))+ 
+  geom_point(alpha=0.2, size=0.3)+
+  theme_classic()+
+  ylab('LOR HTEbeta')+
+  xlab('LOR CTEbeta')+
+  xlim(-8, 5)+
+  ylim(-8, 5)+
+  geom_abline(intercept = 0, slope = 1, color ='royalblue', size=0.5)+
+  ggtitle('LOR CTEbeta vs LOR HTEbeta')+
+  theme(text = element_text(size = 12))
+p4
+ggsave('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/presentation/s13_p4.png',
+       width = 6, height = 4, units = "in")
+```
+
+slide14
+```{r message=FALSE, warning=FALSE}
+gg_df <- cbind(res.cont.md %>% filter(modelname=='ivre') %>% select(MA.id, est),
+               res.cont.md %>% filter(modelname=='ivfe') %>% select(est))
+colnames(gg_df) <- c('MA.id','ivre_est', 'ivfe_est')
+p1 <- gg_df %>% 
+  ggplot(aes(x=ivfe_est, y=ivre_est))+ 
+  geom_point(alpha=0.2, size=0.3)+
+  theme_classic()+
+  ylab('MD IVRE')+
+  xlab('MD IVFE')+
+  xlim(-100, 100)+
+  ylim(-100, 100)+
+  geom_abline(intercept = 0, slope = 1, color ='royalblue', size=0.5)+
+  ggtitle('MD IVFE vs MD IVRE')+
+  theme(text = element_text(size = 12))
+p1
+ggsave('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/presentation/s14_p1.png',
+        width = 6, height = 4, units = "in")
+```
+
+```{r message=FALSE, warning=FALSE}
+gg_df <- cbind(res.cont.md %>% filter(modelname=='htebayesian') %>% select(MA.id, est),
+               res.cont.md %>% filter(modelname=='ctebayesian') %>% select(est))
+colnames(gg_df) <- c('MA.id','hte_est', 'cte_est')
+p2 <- gg_df %>% 
+  ggplot(aes(x=cte_est, y=hte_est))+ 
+  geom_point(alpha=0.2, size=0.3)+
+  theme_classic()+
+  ylab('MD HTE Bayesian tau(0,50)')+
+  xlab('MD CTE Bayesian')+
+  xlim(-100, 100)+
+  ylim(-100, 100)+
+  geom_abline(intercept = 0, slope = 1, color ='royalblue', size=0.5)+
+  ggtitle('MD CTE Bayesian vs MD HTE Bayesian tau(0,50)')+
+  theme(text = element_text(size = 12))
+p2
+ggsave('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/presentation/s14_p2.png',
+        width = 6, height = 4, units = "in")
+```
+
+```{r message=FALSE, warning=FALSE}
+gg_df <- cbind(res.cont.md.tau100 %>% select(MA.id, est),
+               res.cont.md %>% filter(modelname=='ctebayesian') %>% select(est))
+colnames(gg_df) <- c('MA.id','hte_est', 'cte_est')
+p3 <- gg_df %>% 
+  ggplot(aes(x=cte_est, y=hte_est))+ 
+  geom_point(alpha=0.2, size=0.3)+
+  theme_classic()+
+  ylab('MD HTE Bayesian tau(0,100)')+
+  xlab('MD CTE Bayesian')+
+  xlim(-100, 100)+
+  ylim(-100, 100)+
+  geom_abline(intercept = 0, slope = 1, color ='royalblue', size=0.5)+
+  ggtitle('MD CTE Bayesian vs MD HTE Bayesian tau(0,100)')+
+  theme(text = element_text(size = 12))
+p3
+ggsave('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/presentation/s14_p3.png',
+        width = 6, height = 4, units = "in")
+```
+slide15
+```{r}
+gg_df <- cbind(jags %>% filter(modelname=='ivre') %>% select(MA.id, se),
+               jags %>% filter(modelname=='ivfe') %>% select(se, event))
+colnames(gg_df) <- c('MA.id','ivre_se', 'ivfe_se','Event')
+p1 <- gg_df %>% 
+  ggplot(aes(x=ivfe_se, y=ivre_se))+ 
+  geom_point(alpha=0.2, size=0.3)+
+  theme_classic()+
+  ylab('SE IVRE')+
+  xlab('SE IVFE')+
+  xlim(0, 1.5)+
+  ylim(0, 1.5)+
+  geom_abline(intercept = 0, slope = 1, color ='royalblue', size=0.5)+
+  ggtitle('SE IVFE vs SE IVRE')+
+  theme(text = element_text(size = 12))
+p1
+ggsave('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/presentation/s15_p1.png',
+        width = 6, height = 4, units = "in")
+```
+
+```{r}
+gg_df <- cbind(jags %>% filter(modelname=='htevaguelogit') %>% select(MA.id, se),
+               jags %>% filter(modelname=='ctevaguelogit') %>% select(se, event))
+colnames(gg_df) <- c('MA.id','hte_se', 'cte_se','Event')
+p2 <- gg_df %>% 
+  ggplot(aes(x=cte_se, y=hte_se))+ 
+  geom_point(alpha=0.2, size=0.3)+
+  theme_classic()+
+  ylab('SE HTElogit tau(0,2)')+
+  xlab('SE CTElogit')+
+  #xlim(0, 1.5)+
+  #ylim(0, 1.5)+
+  geom_abline(intercept = 0, slope = 1, color ='royalblue', size=0.5)+
+  ggtitle('SE CTElogit vs SE HTElogit tau(0,2)')+
+  theme(text = element_text(size = 12))
+p2
+ggsave('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/presentation/s15_p2.png',
+        width = 6, height = 4, units = "in")
+```
+
+```{r}
+gg_df <- cbind(hte.tau50 %>% select(MA.id, se),
+               jags %>% filter(modelname=='ctevaguelogit') %>% select(se, event))
+colnames(gg_df) <- c('MA.id','hte_se', 'cte_se','Event')
+p3 <- gg_df %>% 
+  ggplot(aes(x=cte_se, y=hte_se))+ 
+  geom_point(alpha=0.2, size=0.3)+
+  theme_classic()+
+  ylab('SE HTElogit tau(0,50)')+
+  xlab('SE CTElogit')+
+  xlim(0, 10)+
+  ylim(0, 10)+
+  geom_abline(intercept = 0, slope = 1, color ='royalblue', size=0.5)+
+  ggtitle('SE CTElogit vs SE HTElogit tau(0,50)')+
+  theme(text = element_text(size = 12))
+p3
+ggsave('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/presentation/s15_p3.png',
+        width = 6, height = 4, units = "in")
+```
+
+```{r}
+gg_df <- cbind(jags %>% filter(modelname=='ctebeta') %>% select(MA.id, se),
+               jags %>% filter(modelname=='htebeta')  %>% select(se, event))
+colnames(gg_df) <- c('MA.id', 'cte_se', 'hte_se', 'Event')
+p4 <- gg_df %>% 
+  ggplot(aes(x=cte_se, y=hte_se))+ 
+  geom_point(alpha=0.2, size=0.3)+
+  theme_classic()+
+  ylab('SE HTEbeta')+
+  xlab('SE CTEbeta')+
+  xlim(0, 3)+
+  ylim(0, 3)+
+  geom_abline(intercept = 0, slope = 1, color ='royalblue', size=0.5)+
+  ggtitle('SE CTEbeta vs SE HTEbeta')+
+  theme(text = element_text(size = 12))
+p4
+ggsave('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/presentation/s15_p4.png',
+       width = 6, height = 4, units = "in")
+```
+slide16
+```{r}
+gg_df <- cbind(res.cont.md %>% filter(modelname=='ivre') %>% select(MA.id, se),
+               res.cont.md %>% filter(modelname=='ivfe') %>% select(se))
+colnames(gg_df) <- c('MA.id','ivre_se', 'ivfe_se')
+p1 <- gg_df %>% 
+  ggplot(aes(x=ivfe_se, y=ivre_se))+ 
+  geom_point(alpha=0.2, size=0.3)+
+  theme_classic()+
+  ylab('SE IVRE')+
+  xlab('SE IVFE')+
+  xlim(0, 150)+
+  ylim(0, 150)+
+  geom_abline(intercept = 0, slope = 1, color ='royalblue', size=0.5)+
+  ggtitle('SE IVFE vs SE IVRE MD')+
+  theme(text = element_text(size = 12))
+p1
+ggsave('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/presentation/s16_p1.png',
+        width = 6, height = 4, units = "in")
+```
+
+```{r}
+gg_df <- cbind(res.cont.md %>% filter(modelname=='htebayesian') %>% select(MA.id, se),
+               res.cont.md %>% filter(modelname=='ctebayesian') %>% select(se))
+colnames(gg_df) <- c('MA.id','hte_se', 'cte_se')
+p2 <- gg_df %>% 
+  ggplot(aes(x=cte_se, y=hte_se))+ 
+  geom_point(alpha=0.2, size=0.3)+
+  theme_classic()+
+  ylab('SE HTE Bayesian tau(0,50)')+
+  xlab('SE CTE Bayesian')+
+  xlim(0, 15)+
+  ylim(0, 15)+
+  geom_abline(intercept = 0, slope = 1, color ='royalblue', size=0.5)+
+  ggtitle('SE CTE Bayesian vs SE HTE Bayesian tau(0,50) MD')+
+  theme(text = element_text(size = 12))
+p2
+ggsave('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/presentation/s16_p2.png',
+        width = 6, height = 4, units = "in")
+```
+
+```{r}
+gg_df <- cbind(res.cont.md.tau100 %>% select(MA.id, se),
+               res.cont.md %>% filter(modelname=='ctebayesian') %>% select(se))
+colnames(gg_df) <- c('MA.id','hte_se', 'cte_se')
+p3 <- gg_df %>% 
+  ggplot(aes(x=cte_se, y=hte_se))+ 
+  geom_point(alpha=0.2, size=0.3)+
+  theme_classic()+
+  ylab('SE HTE Bayesian tau(0,100)')+
+  xlab('SE CTE Bayesian')+
+  xlim(0, 25)+
+  ylim(0, 25)+
+  geom_abline(intercept = 0, slope = 1, color ='royalblue', size=0.5)+
+  ggtitle('SE CTE Bayesian vs SE HTE Bayesian tau(0,100) MD')+
+  theme(text = element_text(size = 12))
+p3
+ggsave('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/presentation/s16_p3.png',
+        width = 6, height = 4, units = "in")
+```
+
+Plot with vertival lines
+```{r}
+#ivre vs ivfe
+#x axis is tau ivre, y axis is lor ivre-lor ivfe
+gg_df <- cbind(jags %>% filter(modelname=='ivre') %>% select(MA.id, tau, est),
+               jags %>% filter(modelname=='ivfe') %>% select(est, event))
+colnames(gg_df) <- c('MA.id','tau_ivre', 'ivre_est', 'ivfe_est','Event')
+gg_df$diff_est <- gg_df$ivre_est- gg_df$ivfe_est
+mean_diff <- mean(gg_df$diff_est)
+lower <- mean_diff - 1.96*sd(gg_df$diff_est)
+upper <- mean_diff + 1.96*sd(gg_df$diff_est)
+#pdf(file = "/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/tau_diff_lor.pdf")
+vline_25 <- quantile(gg_df$tau_ivre, probs = 0.25)
+vline_50 <- quantile(gg_df$tau_ivre, probs = 0.5)
+vline_75 <- quantile(gg_df$tau_ivre, probs = 0.75)
+vline_100 <- quantile(gg_df$tau_ivre, probs = 1)
+p <- gg_df  %>% filter(tau_ivre<=3) %>% 
+  arrange(Event) %>% 
+  ggplot(aes(x=tau_ivre, y=diff_est))+ 
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  theme_classic()+
+  ylab('LOR IVRE - LOR IVFE')+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  geom_vline(xintercept = vline_25, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_25,1.7,label="25%"), size=3.5)+
+  geom_vline(xintercept = vline_50, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_50,2,label="50%"), size=3.5)+
+  geom_vline(xintercept = vline_75, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_75,2,label="75%"), size=3.5)+
+  geom_vline(xintercept = vline_100, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_100,2,label="100%"), size=3.5)+
+  ggtitle('tau IVRE vs LOR IVRE-LOR IVFE')+
+  scale_color_manual(values=group.colors)+
+  theme(text = element_text(size = 7))+
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+p
+```
+
+```{r}
+gg_df <- cbind(jags %>% filter(modelname=='htevaguelogit') %>% select(MA.id, tau, est),
+               jags %>% filter(modelname=='ctevaguelogit') %>% select(est, event))
+colnames(gg_df) <- c('MA.id','tau_htelogit', 'htelogit_est', 'ctelogit_est','Event')
+gg_df$diff_est <- gg_df$htelogit_est- gg_df$ctelogit_est
+vline_25 <- quantile(gg_df$tau_htelogit, probs = 0.25)
+vline_50 <- quantile(gg_df$tau_htelogit, probs = 0.5)
+vline_75 <- quantile(gg_df$tau_htelogit, probs = 0.75)
+vline_100 <- quantile(gg_df$tau_htelogit, probs = 1)
+p1 <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=tau_htelogit, y=diff_est))+
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  theme_classic()+
+  ylab('LOR HTElogit - LOR CTElogit')+
+  xlim(0, 2.5)+
+  ylim(-10,6)+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  geom_vline(xintercept = vline_25, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_25, 6,label="25%"), size=3.5)+
+  geom_vline(xintercept = vline_50, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_50, 6,label="50%"), size=3.5)+
+  geom_vline(xintercept = vline_75, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_75, 6,label="75%"), size=3.5)+
+  geom_vline(xintercept = vline_100, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_100, 6,label="100%"), size=3.5)+
+  ggtitle('tau htelogit(0,2) vs lor htelogit - lor ctelogit')+
+  scale_color_manual(values=group.colors)+
+  scale_y_continuous(breaks = seq(-10,7,2))+
+  theme(text = element_text(size = 7))+
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+p1
+
+#htelogit(tau(0,50)) vs ctelogit
+#x axis is tau htelogit, y axis is lor hte logit - lor cte logit
+gg_df <- cbind(hte.tau50$MA.id, hte.tau50$tau, hte.tau50$est,
+               jags %>% filter(modelname=='ctevaguelogit') %>% select(est, event))
+colnames(gg_df) <- c('MA.id','tau_htelogit', 'htelogit_est', 'ctelogit_est','Event')
+gg_df$diff_est <- gg_df$htelogit_est- gg_df$ctelogit_est
+vline_25 <- quantile(gg_df$tau_htelogit, probs = 0.25)
+vline_50 <- quantile(gg_df$tau_htelogit, probs = 0.5)
+vline_75 <- quantile(gg_df$tau_htelogit, probs = 0.75)
+vline_100 <- quantile(gg_df$tau_htelogit, probs = 1)
+p2 <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=tau_htelogit, y=diff_est))+
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  theme_classic()+
+  ylab('lor htelogit - lor ctelogit')+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  geom_vline(xintercept = vline_25, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_25, 6,label="25%"), size=3.5)+
+  geom_vline(xintercept = vline_50, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_50, 5,label="50%"), size=3.5)+
+  geom_vline(xintercept = vline_75, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_75, 4,label="75%"), size=3.5)+
+  geom_vline(xintercept = vline_100, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_100, 6,label="100%"), size=3.5)+
+  ggtitle('tau htelogit(0,50) vs lor htelogit - lor ctelogit')+
+  scale_color_manual(values=group.colors)+
+  scale_x_continuous(breaks = seq(0,20,1))+
+  scale_y_continuous(breaks = seq(-10,7,2))+
+  theme(text = element_text(size = 7))+
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+p2
+```
+
+```{r message=FALSE, warning=FALSE}
+#x axis is taua, y axis is htebeta pa - ctebeta pa
+gg_df <- cbind(jags %>% filter(modelname=='ctebeta') %>% select(MA.id, pa), 
+               jags %>% filter(modelname=='htebeta') %>% select(taua, pa, event))
+colnames(gg_df) <- c('MA.id', 'ctebeta_pa', 'htebeta_taua', 'htebeta_pa', 'Event')
+gg_df$diff_pa <-gg_df$htebeta_pa-gg_df$ctebeta_pa
+vline_25 <- quantile(gg_df$htebeta_taua, probs = 0.25, na.rm = T)
+vline_50 <- quantile(gg_df$htebeta_taua, probs = 0.5, na.rm = T)
+vline_75 <- quantile(gg_df$htebeta_taua, probs = 0.75, na.rm = T)
+vline_100 <- quantile(gg_df$htebeta_taua, probs = 1, na.rm = T)
+pa <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=htebeta_taua, y=diff_pa))+
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  theme_classic()+
+  xlab('htebeta taua')+
+  ylab('htebeta pa - ctebeta pa')+
+  ylim(-0.5, 0.5)+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  geom_vline(xintercept = vline_25, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_25, 0.5,label="25%"), size=3.5)+
+  geom_vline(xintercept = vline_50, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_50, 0.5,label="50%"), size=3.5)+
+  geom_vline(xintercept = vline_75, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_75, 0.5,label="75%"), size=3.5)+
+  geom_vline(xintercept = vline_100, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_100, 0.5,label="100%"), size=3.5)+  
+  ggtitle('htebeta taua vs htebeta pa - ctebeta pa')+
+  scale_color_manual(values=group.colors)+
+  theme(text = element_text(size = 7))+
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+pa
+#x axis is tauc, y axis is htebeta pc- ctebeta pc
+gg_df <- cbind(jags %>% filter(modelname=='ctebeta') %>% select(MA.id, pc), 
+      jags %>% filter(modelname=='htebeta') %>% select(tauc, pc, event))
+colnames(gg_df) <- c('MA.id','ctebeta_pc', 'htebeta_tauc', 'htebeta_pc', 'Event')
+gg_df$diff_pc <-gg_df$htebeta_pc-gg_df$ctebeta_pc
+vline_25 <- quantile(gg_df$htebeta_tauc, probs = 0.25, na.rm = T)
+vline_50 <- quantile(gg_df$htebeta_tauc, probs = 0.5, na.rm = T)
+vline_75 <- quantile(gg_df$htebeta_tauc, probs = 0.75, na.rm = T)
+vline_100 <- quantile(gg_df$htebeta_tauc, probs = 1, na.rm = T)
+pc <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=htebeta_tauc, y=diff_pc))+
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  theme_classic()+
+  xlab('htebeta tauc')+
+  ylab('htebeta pc - ctebeta pc')+
+  ylim(-0.5, 0.5)+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  geom_vline(xintercept = vline_25, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_25, 0.5,label="25%"), size=3.5)+
+  geom_vline(xintercept = vline_50, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_50, 0.5,label="50%"), size=3.5)+
+  geom_vline(xintercept = vline_75, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_75, 0.5,label="75%"), size=3.5)+
+  geom_vline(xintercept = vline_100, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_100, 0.5,label="100%"), size=3.5)+  
+  ggtitle('htebeta tauc vs htebeta pc - ctebeta pc')+
+  scale_color_manual(values=group.colors)+
+  theme(text = element_text(size = 7))+
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+pc
+```
+
+```{r message=FALSE, warning=FALSE}
+gg_df <- cbind(jags %>% filter(modelname=='ctebeta') %>% select(MA.id, pa), 
+               jags %>% filter(modelname=='ablogit') %>% select(taua, pa, event))
+colnames(gg_df) <- c('MA.id', 'ctebeta_pa', 'ablogit_taua', 'ablogit_pa', 'Event')
+gg_df$diff_pa <-gg_df$ablogit_pa-gg_df$ctebeta_pa
+vline_25 <- quantile(gg_df$ablogit_taua, probs = 0.25, na.rm = T)
+vline_50 <- quantile(gg_df$ablogit_taua, probs = 0.5, na.rm = T)
+vline_75 <- quantile(gg_df$ablogit_taua, probs = 0.75, na.rm = T)
+vline_100 <- quantile(gg_df$ablogit_taua, probs = 1, na.rm = T)
+pa_ab <- gg_df %>% arrange(Event) %>%  
+  ggplot(aes(x=ablogit_taua, y=diff_pa))+
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  theme_classic()+
+  xlab('ablogit taua')+
+  ylab('ablogit pa - ctebeta pa')+
+  ylim(-0.4, 0.8)+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  geom_vline(xintercept = vline_25, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_25, 0.75,label="25%"), size=3.5)+
+  geom_vline(xintercept = vline_50, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_50, 0.5,label="50%"), size=3.5)+
+  geom_vline(xintercept = vline_75, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_75, 0.25,label="75%"), size=3.5)+
+  geom_vline(xintercept = vline_100, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_100, 0.5,label="100%"), size=3.5)+  
+  ggtitle('ablogit taua vs ablogit pa - ctebeta pa')+
+  scale_color_manual(values=group.colors)+
+  theme(text = element_text(size = 7))+
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+pa_ab
+
+gg_df <- cbind(jags %>% filter(modelname=='ctebeta') %>% select(MA.id, pc), 
+               jags %>% filter(modelname=='ablogit') %>% select(tauc, pc, event))
+colnames(gg_df) <- c('MA.id','ctebeta_pc', 'ablogit_tauc', 'ablogit_pc', 'Event')
+gg_df$diff_pc <-gg_df$ablogit_pc-gg_df$ctebeta_pc
+vline_25 <- quantile(gg_df$ablogit_tauc, probs = 0.25, na.rm = T)
+vline_50 <- quantile(gg_df$ablogit_tauc, probs = 0.5, na.rm = T)
+vline_75 <- quantile(gg_df$ablogit_tauc, probs = 0.75, na.rm = T)
+vline_100 <- quantile(gg_df$ablogit_tauc, probs = 1, na.rm = T)
+pc_ab <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=ablogit_tauc, y=diff_pc))+
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  theme_classic()+
+  xlab('ablogit tauc')+
+  ylab('ablogit pc - ctebeta pc')+
+  xlim(0, 12.5)+
+  ylim(-0.4, 0.8)+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  geom_vline(xintercept = vline_25, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_25, 0.75,label="25%"), size=3.5)+
+  geom_vline(xintercept = vline_50, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_50, 0.5,label="50%"), size=3.5)+
+  geom_vline(xintercept = vline_75, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_75, 0.25,label="75%"), size=3.5)+
+  geom_vline(xintercept = vline_100, linetype="dotted", size=0.5)+
+  geom_text(aes(vline_100, 0.5,label="100%"), size=3.5)+  
+  ggtitle('ablogit tauc vs ablogit pc - ctebeta pc')+
+  scale_color_manual(values=group.colors)+
+  theme(text = element_text(size = 7))+
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+pc_ab
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

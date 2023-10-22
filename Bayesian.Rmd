@@ -1,0 +1,910 @@
+---
+title: "Hetero Analysis"
+author: "Yicheng Shen"
+date: "26/03/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mosaic)
+ggplot2::theme_set(ggplot2::theme_bw())
+knitr::opts_chunk$set(out.width = "100%", fig.align = 'center')
+```
+
+
+```{r}
+res <- read.csv('res/res_binary.csv')   
+res2 <- read.csv('res/htelogit_tau50.csv')   
+res3 <- read.csv('res/ab_tau50.csv')   
+
+modelname = rep("htelogit_tau50", nrow(res2))
+col.group = rep("Bayesian", nrow(res2))
+pch.group = rep("HTE model", nrow(res2))
+
+res2 = cbind(res2[, 1:3], modelname, col.group, pch.group, res2[, 4:ncol(res2)])
+res2$I.2 = NA
+
+
+modelname = rep("ablogit_tau50", nrow(res3))
+col.group = rep("Bayesian", nrow(res3))
+pch.group = rep("HTE model", nrow(res3))
+
+res3 = cbind(res3[, 1:3], modelname, col.group, pch.group, res3[, 4:ncol(res3)])
+res3$I.2 = NA
+
+res_all = rbind(res, res2, res3)
+```
+
+
+
+```{r}
+result = res_all %>% 
+  mutate(modelname = factor(modelname, levels = c("ivfe", "ivre", "ctevaguelogit","ctebeta", "htevaguelogit", "htelogit_tau50", "htebeta", "ablogit", "ablogit_tau50")))
+
+n_distinct(result$MA.id)
+nrow(result) # 9 model result per study
+
+table((result %>% distinct(MA.id, .keep_all = TRUE))$event)
+```
+
+
+```{r}
+result = result %>% 
+  mutate(Significant_num = 1-as.numeric(0 >= low & 0 <= up)) %>% 
+  mutate(Significant = ifelse(Significant_num == "1", "significant", "non-significant"))
+
+result$Significant <- factor(result$Significant, levels = c("significant", "non-significant")) 
+
+# result %>% ggplot() + geom_ribbon(aes(x = MA.id, ymin = low, ymax = up)) + facet_wrap(~modelname)
+```
+
+
+## analyze seperate outcome type
+
+```{r}
+result_com = result %>% filter(event %in% c("common"))
+n_distinct(result_com$MA.id)
+result_if = result %>% filter(event %in% c("infrequent"))
+n_distinct(result_if$MA.id)
+result_ra = result %>% filter(event %in% c("rare"))
+n_distinct(result_ra$MA.id)
+result_vra = result %>% filter(event %in% c("very rare"))
+n_distinct(result_vra$MA.id)
+```
+
+
+
+```{r}
+create_table <- function(result){
+
+modelnames <- unique(result$modelname)
+
+table_list <- list()
+
+for (i in 1:(length(modelnames)-1)) {
+  for (j in (i+1):length(modelnames)) {
+    model1 <- modelnames[i]
+    model2 <- modelnames[j]
+    
+    # Subset the data for the current combination of modelnames
+    subset_data <- result[result$modelname %in% c(model1, model2), ]
+    
+    # Create a 2x2 contingency table
+    contingency_table <- table(subset_data$Significant[subset_data$modelname == model1],
+                               subset_data$Significant[subset_data$modelname == model2])
+    
+    # Add the table to the list
+    table_list[[paste(model1, model2, sep = "_vs_")]] <- contingency_table
+  }
+}
+
+# Print the tables
+for (table_name in names(table_list)) {
+  cat("Table:", table_name, "\n")
+  print(table_list[[table_name]])
+  cat("\n")
+}
+}
+```
+
+
+```{r}
+# create_table(result_com)
+# create_table(result_if)
+# create_table(result_ra)
+# create_table(result_vra)
+```
+
+
+#  "htevaguelogit", "htelogit_tau50"
+
+```{r}
+table(result$Significant[result$modelname == "htevaguelogit"],
+                        result$Significant[result$modelname == "htelogit_tau50"])
+
+proportions(table(result$Significant[result$modelname == "htevaguelogit"],
+                        result$Significant[result$modelname == "htelogit_tau50"]))*100
+
+cor( (result %>% filter(modelname %in% c("htevaguelogit")))$est,
+     (result %>% filter(modelname %in% c("htelogit_tau50")))$est)
+
+cor( (result %>% filter(modelname %in% c("htevaguelogit")))$se,
+     (result %>% filter(modelname %in% c("htelogit_tau50")))$se )
+
+
+#
+upper_right = (result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50")) %>% 
+  group_by(MA.id) %>% mutate(Significant_sum = sum(Significant_num)) %>% 
+  filter(Significant_sum == 1, Significant == "significant", modelname == "htevaguelogit"))$MA.id
+
+# 
+bottom_left = (result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50")) %>% 
+  group_by(MA.id) %>% mutate(Significant_sum = sum(Significant_num)) %>% 
+  filter(Significant_sum == 1, Significant == "significant", modelname == "htelogit_tau50"))$MA.id
+```
+
+
+```{r}
+result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_hline(yintercept = 0, linewidth = 1) + 
+  geom_point(aes(index, est, color = event), size = 0.5) +
+  geom_ribbon(aes(x = index, ymin = low, ymax = up), alpha = 0.5, fill = "gray") + facet_wrap(~modelname)
+
+
+result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = event), size = 0.5) + facet_wrap(~modelname)
+
+
+result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(MA.id) %>% 
+  mutate(difference = diff(est)) %>% 
+  ungroup() %>% 
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = difference < 0), size = 0.5) + facet_wrap(~modelname) + labs(color = "htelogit_tau50 lower")
+
+
+cor( (result %>% filter(modelname %in% c("htevaguelogit"), MA.id %in% bottom_left))$est,
+     (result %>% filter(modelname %in% c("htelogit_tau50"), MA.id %in% bottom_left))$est )
+
+cor( (result %>% filter(modelname %in% c("htevaguelogit"), MA.id %in% bottom_left))$se,
+     (result %>% filter(modelname %in% c("htelogit_tau50"), MA.id %in% bottom_left))$se )
+
+
+result_strange <- result %>% filter(MA.id %in% bottom_left) 
+prop.table(table(result_strange$event))
+```
+
+
+```{r}
+result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50")) %>% 
+    group_by(MA.id) %>% summarize(diff(width)) %>% filter(`diff(width)` < 0)
+
+result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50")) %>% 
+    filter(MA.id %in% upper_right) %>% group_by(MA.id) %>% summarize(diff(width)) %>% filter(`diff(width)` < 0)
+
+result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50")) %>% 
+    group_by(MA.id) %>% reframe(event = event, diff_width = diff(width)) %>% distinct() %>% 
+  ggplot() + geom_point(aes(MA.id, diff_width, color = event)) 
+```
+
+
+```{r}
+result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_ribbon(aes(x = index, ymin = low, ymax = up), alpha = 1, fill = "gray") +
+  geom_point(aes(index, est, color = event), size = 0.02) +
+  geom_hline(yintercept = 0, linewidth = 1) + facet_wrap(~modelname)
+
+
+result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_col(aes(index, width))+ facet_wrap(~modelname)
+
+
+result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = event), size = 0.5) + facet_wrap(~modelname)
+
+
+cor( (result %>% filter(modelname %in% c("htevaguelogit"), MA.id %in% upper_right))$est,
+     (result %>% filter(modelname %in% c("htelogit_tau50"), MA.id %in% upper_right))$est )
+
+cor( (result %>% filter(modelname %in% c("htevaguelogit"), MA.id %in% upper_right))$se,
+     (result %>% filter(modelname %in% c("htelogit_tau50"), MA.id %in% upper_right))$se )
+
+
+result_expected <- result %>% filter(MA.id %in% upper_right) 
+prop.table(table(result_expected$event))
+```
+
+
+
+```{r}
+result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = modelname), size = 1)
+
+result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>% ungroup() %>% 
+  group_by(MA.id) %>% mutate(diff_est = diff(est)) %>% ungroup() %>% 
+  mutate(plot_mean = mean(diff_est), plot_sd = sd(diff_est)) %>% 
+  ggplot() + geom_point(aes(index, diff_est, color = event), size = 1) +
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd)) + geom_hline(aes(yintercept = plot_mean - 2 * plot_sd))
+
+
+result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = modelname), size = 0.5)
+
+result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>% ungroup() %>% 
+  group_by(MA.id) %>% mutate(diff_est = diff(est)) %>% ungroup() %>% 
+  mutate(plot_mean = mean(diff_est), plot_sd = sd(diff_est)) %>% 
+  ggplot() + geom_point(aes(index, diff_est, color = event), size = 0.5) +
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd)) + geom_hline(aes(yintercept = plot_mean - 2 * plot_sd))
+
+
+result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50")) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = modelname), size = 0.3)
+
+result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50")) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>% ungroup() %>% 
+  group_by(MA.id) %>% mutate(diff_est = diff(est)) %>% ungroup() %>% 
+  mutate(plot_mean = mean(diff_est), plot_sd = sd(diff_est)) %>% 
+  ggplot() + geom_point(aes(index, diff_est, color = event), size = 0.3) +
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd)) + geom_hline(aes(yintercept = plot_mean - 2 * plot_sd))
+```
+
+
+
+
+
+
+
+# "htebeta" v.s "htevaguelogit"
+
+```{r}
+missing.MA.id = (result %>% filter(modelname == "htebeta") %>% filter(is.na(est)))$MA.id
+result_narm = result %>% filter(! MA.id %in% missing.MA.id)
+
+
+table(result_narm$Significant[result_narm$modelname == "htebeta"],
+                        result_narm$Significant[result_narm$modelname == "htevaguelogit"])
+
+proportions(table(result_narm$Significant[result_narm$modelname == "htebeta"],
+                        result_narm$Significant[result_narm$modelname == "htevaguelogit"]))*100
+
+cor( (result_narm %>% filter(modelname %in% c("htebeta")))$est,
+     (result_narm %>% filter(modelname %in% c("htevaguelogit")))$est)
+
+cor( (result_narm %>% filter(modelname %in% c("htebeta")))$se,
+     (result_narm %>% filter(modelname %in% c("htevaguelogit")))$se )
+
+
+#
+upper_right = (result_narm %>% filter(modelname %in% c("htebeta", "htevaguelogit")) %>% 
+  group_by(MA.id) %>% mutate(Significant_sum = sum(Significant_num)) %>% 
+  filter(Significant_sum == 1, Significant == "significant", modelname == "htebeta"))$MA.id
+
+# 
+bottom_left = (result_narm %>% filter(modelname %in% c("htebeta", "htevaguelogit")) %>% 
+  group_by(MA.id) %>% mutate(Significant_sum = sum(Significant_num)) %>% 
+  filter(Significant_sum == 1, Significant == "significant", modelname == "htevaguelogit"))$MA.id
+```
+
+
+```{r}
+result_narm %>% filter(modelname %in% c("htebeta", "htevaguelogit")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_hline(yintercept = 0, linewidth = 1) + 
+  geom_point(aes(index, est, color = event), size = 0.5) +
+  geom_ribbon(aes(x = index, ymin = low, ymax = up), alpha = 0.5, fill = "gray") + facet_wrap(~modelname)
+
+
+result_narm %>% filter(modelname %in% c("htebeta", "htevaguelogit")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = event), size = 0.5) + facet_wrap(~modelname)
+
+
+result_narm %>% filter(modelname %in% c("htebeta", "htevaguelogit")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(MA.id) %>% 
+  mutate(difference = diff(est)) %>% 
+  ungroup() %>% 
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = difference < 0), size = 0.5) + facet_wrap(~modelname) + labs(color = "htevaguelogit lower")
+
+
+cor( (result_narm %>% filter(modelname %in% c("htebeta"), MA.id %in% bottom_left))$est,
+     (result_narm %>% filter(modelname %in% c("htevaguelogit"), MA.id %in% bottom_left))$est )
+
+cor( (result_narm %>% filter(modelname %in% c("htebeta"), MA.id %in% bottom_left))$se,
+     (result_narm %>% filter(modelname %in% c("htevaguelogit"), MA.id %in% bottom_left))$se )
+
+
+result_strange <- result_narm %>% filter(MA.id %in% bottom_left) 
+prop.table(table(result_strange$event))
+```
+
+
+```{r}
+result_narm %>% filter(modelname %in% c("htebeta", "htevaguelogit")) %>% 
+    group_by(MA.id) %>% summarize(diff(width)) %>% filter(`diff(width)` < 0)
+
+result_narm %>% filter(modelname %in% c("htebeta", "htevaguelogit")) %>% 
+    filter(MA.id %in% upper_right) %>% group_by(MA.id) %>% summarize(diff(width)) %>% filter(`diff(width)` < 0)
+
+result_narm %>% filter(modelname %in% c("htebeta", "htevaguelogit")) %>% 
+    group_by(MA.id) %>% reframe(event = event, diff_width = diff(width)) %>% distinct() %>% 
+  ggplot() + geom_point(aes(MA.id, diff_width, color = event)) 
+```
+
+
+```{r}
+result_narm %>% filter(modelname %in% c("htebeta", "htevaguelogit")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_ribbon(aes(x = index, ymin = low, ymax = up), alpha = 1, fill = "gray") +
+  geom_point(aes(index, est, color = event), size = 0.02) +
+  geom_hline(yintercept = 0, linewidth = 1) + facet_wrap(~modelname)
+
+
+result_narm %>% filter(modelname %in% c("htebeta", "htevaguelogit")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_col(aes(index, width))+ facet_wrap(~modelname)
+
+
+result_narm %>% filter(modelname %in% c("htebeta", "htevaguelogit")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = event), size = 0.5) + facet_wrap(~modelname)
+
+
+cor( (result_narm %>% filter(modelname %in% c("htevaguelogit"), MA.id %in% upper_right))$est,
+     (result_narm %>% filter(modelname %in% c("htebeta"), MA.id %in% upper_right))$est )
+
+cor( (result_narm %>% filter(modelname %in% c("htevaguelogit"), MA.id %in% upper_right))$se,
+     (result_narm %>% filter(modelname %in% c("htebeta"), MA.id %in% upper_right))$se )
+
+
+result_expected <- result_narm %>% filter(MA.id %in% upper_right) 
+prop.table(table(result_expected$event))
+```
+
+
+
+```{r}
+result_narm %>% filter(modelname %in% c("htebeta", "htevaguelogit")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = modelname), size = 0.5)
+
+result_narm %>% filter(modelname %in% c("htebeta", "htevaguelogit")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>% ungroup() %>% 
+  group_by(MA.id) %>% mutate(diff_est = diff(est)) %>% ungroup() %>% 
+  mutate(plot_mean = mean(diff_est), plot_sd = sd(diff_est)) %>% 
+  ggplot() + geom_point(aes(index, diff_est, color = event), size = 0.5) +
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd)) + geom_hline(aes(yintercept = plot_mean - 2 * plot_sd))
+
+
+result_narm %>% filter(modelname %in% c("htebeta", "htevaguelogit")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = modelname), size = 0.5)
+
+result_narm %>% filter(modelname %in% c("htebeta", "htevaguelogit")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>% ungroup() %>% 
+  group_by(MA.id) %>% mutate(diff_est = diff(est)) %>% ungroup() %>% 
+  mutate(plot_mean = mean(diff_est), plot_sd = sd(diff_est)) %>% 
+  ggplot() + geom_point(aes(index, diff_est, color = event), size = 0.5) +
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd)) + geom_hline(aes(yintercept = plot_mean - 2 * plot_sd))
+
+
+result_narm %>% filter(modelname %in% c("htebeta", "htevaguelogit")) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = modelname), size = 0.3)
+
+result_narm %>% filter(modelname %in% c("htebeta", "htevaguelogit")) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>% ungroup() %>% 
+  group_by(MA.id) %>% mutate(diff_est = diff(est)) %>% ungroup() %>% 
+  mutate(plot_mean = mean(diff_est), plot_sd = sd(diff_est)) %>% 
+  ggplot() + geom_point(aes(index, diff_est, color = event), size = 0.3) +
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd)) + geom_hline(aes(yintercept = plot_mean - 2 * plot_sd))
+```
+
+
+
+
+# "htebeta" v.s "htelogit_tau50"
+
+```{r}
+table(result_narm$Significant[result_narm$modelname == "htebeta"],
+                        result_narm$Significant[result_narm$modelname == "htelogit_tau50"])
+proportions(table(result_narm$Significant[result_narm$modelname == "htebeta"],
+                        result_narm$Significant[result_narm$modelname == "htelogit_tau50"]))*100
+
+cor( (result_narm %>% filter(modelname %in% c("htebeta")))$est,
+     (result_narm %>% filter(modelname %in% c("htelogit_tau50")))$est)
+
+cor( (result_narm %>% filter(modelname %in% c("htebeta")))$se,
+     (result_narm %>% filter(modelname %in% c("htelogit_tau50")))$se )
+
+
+#
+upper_right = (result_narm %>% filter(modelname %in% c("htebeta", "htelogit_tau50")) %>% 
+  group_by(MA.id) %>% mutate(Significant_sum = sum(Significant_num)) %>% 
+  filter(Significant_sum == 1, Significant == "significant", modelname == "htebeta"))$MA.id
+
+# 
+bottom_left = (result_narm %>% filter(modelname %in% c("htebeta", "htelogit_tau50")) %>% 
+  group_by(MA.id) %>% mutate(Significant_sum = sum(Significant_num)) %>% 
+  filter(Significant_sum == 1, Significant == "significant", modelname == "htelogit_tau50"))$MA.id
+```
+
+
+```{r}
+result_narm %>% filter(modelname %in% c("htebeta", "htelogit_tau50")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_hline(yintercept = 0, linewidth = 1) + 
+  geom_point(aes(index, est, color = event), size = 0.3) +
+  geom_ribbon(aes(x = index, ymin = low, ymax = up), alpha = 0.3, fill = "gray") + facet_wrap(~modelname)
+
+
+result_narm %>% filter(modelname %in% c("htebeta", "htelogit_tau50")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = event), size = 0.3) + facet_wrap(~modelname)
+
+
+result_narm %>% filter(modelname %in% c("htebeta", "htelogit_tau50")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(MA.id) %>% 
+  mutate(difference = diff(est)) %>% 
+  ungroup() %>% 
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = difference < 0), size = 0.5) + facet_wrap(~modelname) + labs(color = "htelogit_tau50 lower")
+
+
+cor( (result_narm %>% filter(modelname %in% c("htebeta"), MA.id %in% bottom_left))$est,
+     (result_narm %>% filter(modelname %in% c("htelogit_tau50"), MA.id %in% bottom_left))$est )
+
+cor( (result_narm %>% filter(modelname %in% c("htebeta"), MA.id %in% bottom_left))$se,
+     (result_narm %>% filter(modelname %in% c("htelogit_tau50"), MA.id %in% bottom_left))$se )
+
+
+result_strange <- result_narm %>% filter(MA.id %in% bottom_left) 
+prop.table(table(result_strange$event))
+```
+
+
+```{r}
+result_narm %>% filter(modelname %in% c("htebeta", "htelogit_tau50")) %>% 
+    group_by(MA.id) %>% summarize(diff(width)) %>% filter(`diff(width)` < 0)
+
+result_narm %>% filter(modelname %in% c("htebeta", "htelogit_tau50")) %>% 
+    filter(MA.id %in% upper_right) %>% group_by(MA.id) %>% summarize(diff(width)) %>% filter(`diff(width)` < 0)
+
+result_narm %>% filter(modelname %in% c("htebeta", "htelogit_tau50")) %>% 
+    group_by(MA.id) %>% reframe(event = event, diff_width = diff(width)) %>% distinct() %>% 
+  ggplot() + geom_point(aes(MA.id, diff_width, color = event)) 
+```
+
+
+```{r}
+result_narm %>% filter(modelname %in% c("htebeta", "htelogit_tau50")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_ribbon(aes(x = index, ymin = low, ymax = up), alpha = 1, fill = "gray") +
+  geom_point(aes(index, est, color = event), size = 0.02) +
+  geom_hline(yintercept = 0, linewidth = 1) + facet_wrap(~modelname)
+
+
+result_narm %>% filter(modelname %in% c("htebeta", "htelogit_tau50")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_col(aes(index, width))+ facet_wrap(~modelname)
+
+
+result_narm %>% filter(modelname %in% c("htebeta", "htelogit_tau50")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = event), size = 0.5) + facet_wrap(~modelname)
+
+
+cor( (result_narm %>% filter(modelname %in% c("htebeta"), MA.id %in% upper_right))$est,
+     (result_narm %>% filter(modelname %in% c("htelogit_tau50"), MA.id %in% upper_right))$est )
+
+cor( (result_narm %>% filter(modelname %in% c("htebeta"), MA.id %in% upper_right))$se,
+     (result_narm %>% filter(modelname %in% c("htelogit_tau50"), MA.id %in% upper_right))$se )
+
+
+result_expected <- result_narm %>% filter(MA.id %in% upper_right) 
+prop.table(table(result_expected$event))
+```
+
+
+
+```{r}
+result_narm %>% filter(modelname %in% c("htebeta", "htelogit_tau50")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = modelname), size = 0.5)
+
+result_narm %>% filter(modelname %in% c("htebeta", "htelogit_tau50")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>% ungroup() %>% 
+  group_by(MA.id) %>% mutate(diff_est = diff(est)) %>% ungroup() %>% 
+  mutate(plot_mean = mean(diff_est), plot_sd = sd(diff_est)) %>% 
+  ggplot() + geom_point(aes(index, diff_est, color = event), size = 0.5) +
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd)) + geom_hline(aes(yintercept = plot_mean - 2 * plot_sd))
+
+
+result_narm %>% filter(modelname %in% c("htebeta", "htelogit_tau50")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = modelname), size = 0.5)
+
+result_narm %>% filter(modelname %in% c("htebeta", "htelogit_tau50")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>% ungroup() %>% 
+  group_by(MA.id) %>% mutate(diff_est = diff(est)) %>% ungroup() %>% 
+  mutate(plot_mean = mean(diff_est), plot_sd = sd(diff_est)) %>% 
+  ggplot() + geom_point(aes(index, diff_est, color = event), size = 0.5) +
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd)) + geom_hline(aes(yintercept = plot_mean - 2 * plot_sd))
+
+
+result_narm %>% filter(modelname %in% c("htebeta", "htelogit_tau50")) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = modelname), size = 0.3)
+
+result_narm %>% filter(modelname %in% c("htebeta", "htelogit_tau50")) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>% ungroup() %>% 
+  group_by(MA.id) %>% mutate(diff_est = diff(est)) %>% ungroup() %>% 
+  mutate(plot_mean = mean(diff_est), plot_sd = sd(diff_est)) %>% 
+  ggplot() + geom_point(aes(index, diff_est, color = event), size = 0.3) +
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd)) + geom_hline(aes(yintercept = plot_mean - 2 * plot_sd))
+```
+
+
+#  "ctebeta", "ctevaguelogit"
+
+```{r}
+table(result$Significant[result$modelname == "ctebeta"],
+                        result$Significant[result$modelname == "ctevaguelogit"])
+
+proportions(table(result$Significant[result$modelname == "ctebeta"],
+                        result$Significant[result$modelname == "ctevaguelogit"]))*100
+
+cor( (result %>% filter(modelname %in% c("ctebeta")))$est,
+     (result %>% filter(modelname %in% c("ctevaguelogit")))$est)
+
+cor( (result %>% filter(modelname %in% c("ctebeta")))$se,
+     (result %>% filter(modelname %in% c("ctevaguelogit")))$se )
+
+
+#
+upper_right = (result %>% filter(modelname %in% c("ctebeta", "ctevaguelogit")) %>% 
+  group_by(MA.id) %>% mutate(Significant_sum = sum(Significant_num)) %>% 
+  filter(Significant_sum == 1, Significant == "significant", modelname == "ctebeta"))$MA.id
+
+# 
+bottom_left = (result %>% filter(modelname %in% c("ctebeta", "ctevaguelogit")) %>% 
+  group_by(MA.id) %>% mutate(Significant_sum = sum(Significant_num)) %>% 
+  filter(Significant_sum == 1, Significant == "significant", modelname == "ctevaguelogit"))$MA.id
+```
+
+
+```{r}
+result %>% filter(modelname %in% c("ctebeta", "ctevaguelogit")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_hline(yintercept = 0, linewidth = 1) + 
+  geom_point(aes(index, est, color = event), size = 0.5) +
+  geom_ribbon(aes(x = index, ymin = low, ymax = up), alpha = 0.5, fill = "gray") + facet_wrap(~modelname)
+
+
+result %>% filter(modelname %in% c("ctebeta", "ctevaguelogit")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = event), size = 0.5) + facet_wrap(~modelname)
+
+
+result %>% filter(modelname %in% c("ctebeta", "ctevaguelogit")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(MA.id) %>% 
+  mutate(difference = diff(est)) %>% 
+  ungroup() %>% 
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = difference < 0), size = 0.5) + facet_wrap(~modelname) + labs(color = "htelogit_tau50 lower")
+
+
+cor( (result %>% filter(modelname %in% c("ctebeta"), MA.id %in% bottom_left))$est,
+     (result %>% filter(modelname %in% c("ctevaguelogit"), MA.id %in% bottom_left))$est )
+
+cor( (result %>% filter(modelname %in% c("ctebeta"), MA.id %in% bottom_left))$se,
+     (result %>% filter(modelname %in% c("ctevaguelogit"), MA.id %in% bottom_left))$se )
+
+
+result_strange <- result %>% filter(MA.id %in% bottom_left) 
+prop.table(table(result_strange$event))
+```
+
+
+```{r}
+result %>% filter(modelname %in% c("ctebeta", "ctevaguelogit")) %>% 
+    group_by(MA.id) %>% summarize(diff(width)) %>% filter(`diff(width)` < 0)
+
+result %>% filter(modelname %in% c("ctebeta", "ctevaguelogit")) %>% 
+    filter(MA.id %in% upper_right) %>% group_by(MA.id) %>% summarize(diff(width)) %>% filter(`diff(width)` < 0)
+
+result %>% filter(modelname %in% c("ctebeta", "ctevaguelogit")) %>% 
+    group_by(MA.id) %>% reframe(event = event, diff_width = diff(width)) %>% distinct() %>% 
+  ggplot() + geom_point(aes(MA.id, diff_width, color = event)) 
+```
+
+
+```{r}
+result %>% filter(modelname %in% c("ctebeta", "ctevaguelogit")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_ribbon(aes(x = index, ymin = low, ymax = up), alpha = 1, fill = "gray") +
+  geom_point(aes(index, est, color = event), size = 0.02) +
+  geom_hline(yintercept = 0, linewidth = 1) + facet_wrap(~modelname)
+
+
+result %>% filter(modelname %in% c("ctebeta", "ctevaguelogit")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_col(aes(index, width))+ facet_wrap(~modelname)
+
+
+result %>% filter(modelname %in% c("ctebeta", "ctevaguelogit")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = event), size = 0.5) + facet_wrap(~modelname)
+
+
+cor( (result %>% filter(modelname %in% c("ctebeta"), MA.id %in% upper_right))$est,
+     (result %>% filter(modelname %in% c("ctevaguelogit"), MA.id %in% upper_right))$est )
+
+cor( (result %>% filter(modelname %in% c("ctebeta"), MA.id %in% upper_right))$se,
+     (result %>% filter(modelname %in% c("ctevaguelogit"), MA.id %in% upper_right))$se )
+
+
+result_expected <- result %>% filter(MA.id %in% upper_right) 
+prop.table(table(result_expected$event))
+```
+
+
+
+```{r}
+result %>% filter(modelname %in% c("ctebeta", "ctevaguelogit")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = modelname), size = 1)
+
+result %>% filter(modelname %in% c("ctebeta", "ctevaguelogit")) %>% 
+  filter(MA.id %in% bottom_left) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>% ungroup() %>% 
+  group_by(MA.id) %>% mutate(diff_est = diff(est)) %>% ungroup() %>% 
+  mutate(plot_mean = mean(diff_est), plot_sd = sd(diff_est)) %>% 
+  ggplot() + geom_point(aes(index, diff_est, color = event), size = 1) +
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd)) + geom_hline(aes(yintercept = plot_mean - 2 * plot_sd))
+
+
+result %>% filter(modelname %in% c("ctebeta", "ctevaguelogit")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = modelname), size = 0.5)
+
+result %>% filter(modelname %in% c("ctebeta", "ctevaguelogit")) %>% 
+  filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>% ungroup() %>% 
+  group_by(MA.id) %>% mutate(diff_est = diff(est)) %>% ungroup() %>% 
+  mutate(plot_mean = mean(diff_est), plot_sd = sd(diff_est)) %>% 
+  ggplot() + geom_point(aes(index, diff_est, color = event), size = 0.5) +
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd)) + geom_hline(aes(yintercept = plot_mean - 2 * plot_sd))
+
+
+result %>% filter(modelname %in% c("ctebeta", "ctevaguelogit")) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(index, est, color = modelname), size = 0.3)
+
+result %>% filter(modelname %in% c("ctebeta", "ctevaguelogit")) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>% ungroup() %>% 
+  group_by(MA.id) %>% mutate(diff_est = diff(est)) %>% ungroup() %>% 
+  mutate(plot_mean = mean(diff_est), plot_sd = sd(diff_est)) %>% 
+  ggplot() + geom_point(aes(index, diff_est, color = event), size = 0.3) +
+  geom_hline(aes(yintercept = plot_mean + 2 * plot_sd)) + geom_hline(aes(yintercept = plot_mean - 2 * plot_sd))
+
+result %>% filter(modelname %in% c("ctebeta", "ctevaguelogit")) %>% 
+  # filter(MA.id %in% upper_right) %>% 
+  group_by(MA.id) %>% mutate(avg_est = mean(est)) %>% arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_col(aes(index, width))+ facet_wrap(~modelname)
+```
+
+
+

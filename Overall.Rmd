@@ -1,0 +1,366 @@
+---
+title: "Hetero Analysis"
+author: "Yicheng Shen"
+date: "26/03/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mosaic)
+ggplot2::theme_set(ggplot2::theme_bw())
+knitr::opts_chunk$set(out.width = "100%", fig.align = 'center')
+```
+
+
+```{r}
+res <- read.csv('res/res_binary.csv')   
+res2 <- read.csv('res/htelogit_tau50.csv')   
+res3 <- read.csv('res/ab_tau50.csv')   
+
+modelname = rep("htelogit_tau50", nrow(res2))
+col.group = rep("Bayesian", nrow(res2))
+pch.group = rep("HTE model", nrow(res2))
+
+res2 = cbind(res2[, 1:3], modelname, col.group, pch.group, res2[, 4:ncol(res2)])
+res2$I.2 = NA
+
+
+modelname = rep("ablogit_tau50", nrow(res3))
+col.group = rep("Bayesian", nrow(res3))
+pch.group = rep("HTE model", nrow(res3))
+
+res3 = cbind(res3[, 1:3], modelname, col.group, pch.group, res3[, 4:ncol(res3)])
+res3$I.2 = NA
+
+res_all = rbind(res, res2, res3)
+```
+
+
+```{r}
+result = res_all %>% 
+  mutate(modelname = factor(modelname, levels = c("ivfe", "ivre", "ctevaguelogit","ctebeta", "htevaguelogit", "htelogit_tau50", "htebeta", "ablogit", "ablogit_tau50")))
+
+n_distinct(result$MA.id)
+nrow(result) # 9 model result per study
+
+table((result %>% distinct(MA.id, .keep_all = TRUE))$event)
+```
+
+
+```{r}
+result = result %>% 
+  mutate(Significant_num = 1-as.numeric(0 >= low & 0 <= up)) %>% 
+  mutate(Significant = ifelse(Significant_num == "1", "significant", "non-significant"))
+
+result$Significant <- factor(result$Significant, levels = c("significant", "non-significant")) 
+
+# result %>% ggplot() + geom_ribbon(aes(x = MA.id, ymin = low, ymax = up)) + facet_wrap(~modelname)
+```
+
+```{r}
+result_iv = result %>% filter(modelname %in% c("ivfe", "ivre"))
+table(result_iv$Significant, result_iv$modelname)
+```
+
+
+```{r}
+
+# Get unique modelname values
+modelnames <- unique(result$modelname)
+
+# Create a list to store tables for each combination
+table_list <- list()
+
+# Create tables for each combination of modelname values
+for (i in 1:(length(modelnames)-1)) {
+  for (j in (i+1):length(modelnames)) {
+    model1 <- modelnames[i]
+    model2 <- modelnames[j]
+    
+    # Subset the data for the current combination of modelnames
+    subset_data <- result[result$modelname %in% c(model1, model2), ]
+    
+    # Create a 2x2 contingency table
+    contingency_table <- table(subset_data$Significant[subset_data$modelname == model1],
+                               subset_data$Significant[subset_data$modelname == model2])
+    
+    # Add the table to the list
+    table_list[[paste(model1, model2, sep = "_vs_")]] <- contingency_table
+  }
+}
+
+# Print the tables
+for (table_name in names(table_list)) {
+  cat("Table:", table_name, "\n")
+  print(table_list[[table_name]])
+  cat("\n")
+}
+
+```
+
+
+
+
+
+```{r, fig.width=12}
+# visualize CI
+
+# result %>% filter(event == "common", modelname == "ivfe") %>% ggplot() + geom_ribbon(aes(x = MA.id, ymin = low, ymax = up))
+
+table(result$event)
+
+result %>% filter(event == "common") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>%
+  filter(index %in% sample(1:22074, 1000, replace = F)) %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>%
+  ggplot() + geom_ribbon(aes(x = index, ymin = low, ymax = up)) + facet_wrap(~modelname)
+
+
+result %>% filter(event == "infrequent") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_ribbon(aes(x = index, ymin = low, ymax = up)) + facet_wrap(~modelname)
+
+
+result %>% filter(event == "rare") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_ribbon(aes(x = index, ymin = low, ymax = up)) + facet_wrap(~modelname)
+
+
+result %>% filter(event == "very rare") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_ribbon(aes(x = index, ymin = low, ymax = up)) + facet_wrap(~modelname)
+```
+
+
+```{r, fig.width=12}
+result %>% filter(event == "common") %>%
+  group_by(MA.id) %>%
+  mutate(avg_est = mean(est)) %>% 
+  arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  filter(index %in% sample(1:22074, 1000, replace = F)) %>%
+  ggplot() + 
+  geom_point(aes(x = index, y = est), color = "RED", size = 0.1) + 
+  geom_ribbon(aes(x = index, ymin = low, ymax = up), alpha = 0.5) + 
+  facet_wrap(~modelname)
+
+
+result %>% filter(event == "infrequent") %>%
+  group_by(MA.id) %>%
+  mutate(avg_est = mean(est)) %>% 
+  arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(x = index, y = est), color = "RED", size = 0.2) + 
+  geom_ribbon(aes(x = index, ymin = low, ymax = up), alpha = 0.5) + 
+  facet_wrap(~modelname)
+
+
+result %>% filter(event == "rare") %>%
+  group_by(MA.id) %>%
+  mutate(avg_est = mean(est)) %>% 
+  arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(x = index, y = est), color = "RED", size = 0.2) + 
+  geom_ribbon(aes(x = index, ymin = low, ymax = up), alpha = 0.5) + 
+  facet_wrap(~modelname)
+
+
+result %>% filter(event == "very rare") %>%
+  group_by(MA.id) %>%
+  mutate(avg_est = mean(est)) %>% 
+  arrange(avg_est) %>%
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + 
+  geom_point(aes(x = index, y = est), color = "RED", size = 0.2) + 
+  geom_ribbon(aes(x = index, ymin = low, ymax = up), alpha = 0.5) + 
+  facet_wrap(~modelname)
+```
+
+
+
+
+
+```{r, fig.width=12}
+# Width
+
+result %>% filter(is.na(width)) 
+
+result %>% filter(event == "common") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>%
+  # filter(index %in% sample(1:22074, 2000, replace = F)) %>% 
+  # group_by(modelname) %>%
+  # mutate(index = row_number()) %>%
+  # ungroup() %>%
+  ggplot() + geom_col(aes(index, width, fill = Significant))+ facet_wrap(~modelname)
+
+
+result %>% filter(event == "infrequent") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_col(aes(index, width, fill = Significant))+ facet_wrap(~modelname)
+
+
+result %>% filter(event == "rare") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_col(aes(index, width, fill = Significant))+ facet_wrap(~modelname)
+
+result %>% filter(event == "very rare") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_col(aes(index, width, fill = Significant))+ facet_wrap(~modelname)
+```
+
+
+```{r, fig.width=12}
+result %>% filter(event == "common") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>%
+  ggplot() + geom_point(aes(index, width), size = 0.1)+ facet_wrap(~modelname)
+
+
+result %>% filter(event == "infrequent") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_point(aes(index, width), size = 0.2)+ facet_wrap(~modelname)
+
+
+result %>% filter(event == "rare") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_point(aes(index, width), size = 0.8)+ facet_wrap(~modelname)
+
+result %>% filter(event == "very rare") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_point(aes(index, width), size = 0.8)+ facet_wrap(~modelname)
+```
+
+
+
+
+```{r, fig.width=12}
+# point estimate
+
+result %>% filter(event == "common") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>%
+  # filter(index %in% sample(1:22074, 2000, replace = F)) %>% 
+  # group_by(modelname) %>%
+  # mutate(index = row_number()) %>%
+  # ungroup() %>%
+  ggplot() + geom_point(aes(index, est, color = Significant), size = 0.1)+ facet_wrap(~modelname)
+
+
+result %>% filter(event == "infrequent") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_point(aes(index, est, color = Significant), size = 0.2)+ facet_wrap(~modelname)
+
+
+result %>% filter(event == "rare") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_point(aes(index, est, color = Significant), size = 0.8)+ facet_wrap(~modelname)
+
+result %>% filter(event == "very rare") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_point(aes(index, est, color = Significant), size = 0.8)+ facet_wrap(~modelname)
+
+
+result %>% filter(MA.id == 10)
+```
+
+
+```{r}
+result_tau = result %>% filter(modelname %in% c("htevaguelogit", "ivre"))
+
+cor(result %>% filter(modelname %in% c("htevaguelogit")) %>% dplyr::select(tau),result %>% filter(modelname %in% c("ivre")) %>% dplyr::select(tau))
+
+
+
+result_tau %>% filter(event == "common") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>%
+  ggplot() + geom_point(aes(index, tau, color = modelname))
+
+
+result_tau %>% filter(event == "infrequent") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_point(aes(index, tau, color = modelname))
+
+
+result_tau %>% filter(event == "rare") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_point(aes(index, tau, color = modelname))
+
+result_tau %>% filter(event == "very rare") %>% 
+  group_by(modelname) %>%
+  mutate(index = row_number()) %>%
+  ungroup() %>% 
+  ggplot() + geom_point(aes(index, tau, color = modelname))
+```
+
+
+```{r}
+result_tau_ivre = result_tau %>% filter(modelname %in% c("ivre")) %>% mutate(tau0 = ifelse(tau == 0, "yes", "no"))
+result_tau_htevaguelogit= result_tau %>% filter(modelname %in% c("htevaguelogit"))
+
+table(result_tau_ivre$event, result_tau_ivre$tau0)
+proportions(table(result_tau_ivre$event, result_tau_ivre$tau0), margin = 1)*100
+
+
+
+cor(result_tau_ivre[result_tau_ivre$event == "common",]$tau, result_tau_htevaguelogit[result_tau_htevaguelogit$event == "common",]$tau)
+cor(result_tau_ivre[result_tau_ivre$event == "infrequent",]$tau, result_tau_htevaguelogit[result_tau_htevaguelogit$event == "infrequent",]$tau)
+cor(result_tau_ivre[result_tau_ivre$event == "rare",]$tau, result_tau_htevaguelogit[result_tau_htevaguelogit$event == "rare",]$tau)
+cor(result_tau_ivre[result_tau_ivre$event == "very rare",]$tau, result_tau_htevaguelogit[result_tau_htevaguelogit$event == "very rare",]$tau)
+
+
+cor(result_tau_ivre[result_tau_ivre$event == "common",]$est, result_tau_htevaguelogit[result_tau_htevaguelogit$event == "common",]$est)
+cor(result_tau_ivre[result_tau_ivre$event == "infrequent",]$est, result_tau_htevaguelogit[result_tau_htevaguelogit$event == "infrequent",]$est)
+cor(result_tau_ivre[result_tau_ivre$event == "rare",]$est, result_tau_htevaguelogit[result_tau_htevaguelogit$event == "rare",]$est)
+cor(result_tau_ivre[result_tau_ivre$event == "very rare",]$est, result_tau_htevaguelogit[result_tau_htevaguelogit$event == "very rare",]$est)
+```
+
+

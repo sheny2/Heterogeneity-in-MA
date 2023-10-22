@@ -1,0 +1,986 @@
+---
+title: "Meta analysis heterogeneity model comparison"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(psych)
+library(ggplot2)
+library(ggpubr)
+library(tidyverse)
+library(ggpubr)
+library(gridExtra)
+library(grid)
+library(devtools)
+library(patchwork)
+#get stan and jags results
+stan <- read.csv('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/data/res_binary_stan/res_binary1290.csv')
+jags <- read.csv('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/data/res_binary_jags/res_binary.csv')[1:9030,]
+```
+
+
+**Compare results from Jags and Rstan niter=25000, nburnin=5000, nchain=2, 1290 meta-analyses**
+```{r message=FALSE, warning=FALSE}
+#stan vs jags cte logit
+stan.cte.logit <- stan %>% filter(modelname=='ctevaguelogit') %>% select(est, MA.id)
+jags.cte.logit <- jags %>% filter(modelname=='ctevaguelogit') %>% select(est, event)
+gg_df <- data.frame(cbind(stan.cte.logit, jags.cte.logit))
+colnames(gg_df) <- c('Stan','MA.id', 'Jags','Event')
+group.colors <- c( 'common' = "gray75", 'infrequent' = "forestgreen", 'rare' ="orange1", 'very rare' = "firebrick2")
+gg_df  %>% arrange(Event) %>% 
+  ggplot(aes(x=Stan, y=Jags, color=Event))+ 
+  geom_point()+
+  theme_classic()+
+  geom_text(aes(label = MA.id), size = 2, vjust = -0.5)+
+  geom_abline(intercept = 0, slope = 1, color ='steelblue', size=0.7)+
+  ggtitle('stan cte logit vs jags cte logit')+
+  scale_color_manual(values=group.colors)
+
+#The labels on scatter dots are MA.id. Blue line is y=x.
+```
+The labels on scatter dots are MA.id.
+
+```{r message=FALSE, warning=FALSE}
+#stan vs jags hte logit
+stan.hte.logit <- stan %>% filter(modelname=='htevaguelogit') %>% select(est, MA.id)
+jags.hte.logit <- jags %>% filter(modelname=='htevaguelogit') %>% select(est, event)
+gg_df <- data.frame(cbind(stan.hte.logit, jags.hte.logit))
+colnames(gg_df) <- c('Stan','MA.id', 'Jags','Event')
+
+gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=Stan, y=Jags, color=Event))+ 
+  geom_point()+
+  geom_text(aes(label = MA.id), size = 2, vjust = -0.5)+
+  theme_classic()+
+  geom_abline(intercept = 0, slope = 1, color ='steelblue', size=0.7)+
+  ggtitle('stan hte logit vs jags hte logit')+
+  scale_color_manual(values=group.colors)
+
+#The labels on scatter dots are MA.id. Blue line is y=x.
+```
+
+```{r message=FALSE, warning=FALSE}
+#stan vs jags AB
+stan.ab <- stan %>% filter(modelname=='ablogit0.02') %>% select(est, MA.id)
+jags.ab <- jags %>% filter(modelname=='ablogit') %>% select(est, event)
+gg_df <- data.frame(cbind(stan.ab, jags.ab))
+colnames(gg_df) <- c('Stan', 'MA.id', 'Jags', "Event")
+
+gg_df  %>% arrange(Event) %>% 
+  ggplot(aes(x=Stan, y=Jags, color=Event))+ 
+  geom_point()+
+  theme_classic()+
+  geom_text(aes(label = MA.id), size = 2, vjust = -0.5)+
+  geom_abline(intercept = 0, slope = 1, color ='steelblue', size=0.7)+
+  ggtitle('stan ab vs jags ab')+
+  scale_color_manual(values=group.colors)
+
+#Blue line is y=x.
+```
+
+```{r message=FALSE, warning=FALSE}
+#stan vs jags cte beta
+stan.cte.beta <- stan %>% filter(modelname=='ctebeta') %>% select(est, MA.id)
+jags.cte.beta <- jags %>% filter(modelname=='ctebeta') %>% select(est, event)
+gg_df <- data.frame(cbind(stan.cte.beta, jags.cte.beta))
+colnames(gg_df) <- c('Stan', 'MA.id', 'Jags', 'Event')
+
+gg_df  %>% arrange(Event) %>% 
+  ggplot(aes(x=Stan, y=Jags, color=Event))+ 
+  geom_point()+
+  theme_classic()+
+  geom_text(aes(label = MA.id), size = 2, vjust = -0.5)+
+  geom_abline(intercept = 0, slope = 1, color ='steelblue', size=0.7)+
+  ggtitle('stan cte beta vs jags cte beta')+
+  scale_color_manual(values=group.colors)
+#geom_text(aes(label = MA.id), size = 2, vjust = -0.5)+
+#Blue line is y=x.
+```
+
+```{r message=FALSE, warning=FALSE}
+#stan vs jags hte beta
+stan.hte.beta <- stan %>% filter(modelname=='htebeta') %>% select(est, MA.id)
+jags.hte.beta <- jags %>% filter(modelname=='htebeta') %>% select(est, event)
+gg_df <- data.frame(cbind(stan.hte.beta, jags.hte.beta))
+colnames(gg_df) <- c('Stan', 'MA.id', 'Jags', 'Event')
+
+gg_df  %>% arrange(Event) %>% 
+  ggplot(aes(x=Stan, y=Jags, color=Event))+ 
+  geom_point()+
+  theme_classic()+
+  geom_text(aes(label = MA.id), size = 2, vjust = -0.5)+
+  geom_abline(intercept = 0, slope = 1, color ='steelblue', size=0.7)+
+  ggtitle('stan hte beta vs jags hte beta')+
+  scale_color_manual(values=group.colors)
+#Blue line is y=x.
+```
+# Plots to visualize heterogeneity in MA using stan output 1290 MAs
+
+### Section1: Matrix plot of binary LOR mata analysis, blue line is 45 degree line, stan
+```{r message=FALSE, warning=FALSE}
+#Matrix plot for lor
+matrix_df <- stan %>% select(MA.id, modelname, est) %>% pivot_wider(names_from = modelname, values_from = est)
+colnames(matrix_df) <- c('MA.id','ivfe lor', 'ivre lor', 'hte logit lor tau(0,2)', 'cte logit lor','hte beta lor', 'cte beta lor',  'ab lor')
+col_order <-  c('MA.id','ivfe lor', 'cte logit lor', 'cte beta lor', 'ivre lor', 'hte logit lor tau(0,2)', 'hte beta lor', 'ab lor')
+matrix_df = matrix_df[,col_order]  
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...){
+    #from help of pairs
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- abs(cor(x, y,use="pairwise.complete.obs"))
+    txt <- format(c(r, 0.123456789), digits = digits)[1]
+    txt <- paste0(prefix, txt)
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+
+pairs(matrix_df[,-1], 
+      upper.panel = panel.cor,
+      xlim = c(-15, 15),
+      ylim = c(-15, 15),
+      cex.axis = 0.5,
+      main = "lor",
+      panel= function(x,y,...){ 
+        points(x,y, cex=0.5, pch=20); 
+        abline(a=0, b=1, col = 'steelblue')})
+```
+
+### Section2: matrix plot se of LOR, blue line is 45 degree line, stan
+```{r message=FALSE, warning=FALSE}
+#Matrix plot for se of lor
+matrix_df <- stan %>% select(MA.id, modelname, se) %>% pivot_wider(names_from = modelname, values_from = se)
+colnames(matrix_df) <- c('MA.id','ivfe se','ivre se', 'htelogit se tau(0,2)','ctelogit se', 'hte beta se', 'cte beta se',
+                          'ab se')
+col_order <- c("MA.id", 'ivfe se', 'ctelogit se', 'cte beta se', 'ivre se', 'htelogit se tau(0,2)', 'hte beta se', 'ab se')
+matrix_df = matrix_df[, col_order]
+
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...){
+    #from help of pairs
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- abs(cor(x, y,use="pairwise.complete.obs"))
+    txt <- format(c(r, 0.123456789), digits = digits)[1]
+    txt <- paste0(prefix, txt)
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+
+pairs(matrix_df[,-1], 
+      xlim = c(0,10),
+      ylim = c(0,10),
+      cex.axis = 0.5,
+      main = "standard error of lor stan",
+      upper.panel = panel.cor,
+      panel= function(x,y,...){ 
+        points(x,y, cex=0.5, pch=20); 
+        abline(a=0, b=1, col = 'steelblue')})
+```
+
+### Section3: matrix plot tau ivre, tau htelogit, tauc htebeta, taua htebeta, tauc ab, taua ab, blue line 45 degree line, stan
+```{r message=FALSE, warning=FALSE}
+#Matrix plot for tau
+#data prepare
+tau_ivre <- stan %>% filter(modelname=='ivre') %>% select(tau)
+tau_htelogit2 <- stan %>% filter(modelname=='htevaguelogit') %>% select(tau)
+matrix_df <- cbind(tau_ivre, tau_htelogit2)
+colnames(matrix_df) <- c('tau ivre', 'tau htelogit (0,2)')
+
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...){
+    #from help of pairs
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- abs(cor(x, y,use="pairwise.complete.obs"))
+    txt <- format(c(r, 0.123456789), digits = digits)[1]
+    txt <- paste0(prefix, txt)
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+
+pairs(matrix_df, 
+      xlim = c(0,3),
+      ylim = c(0,3),
+      cex.axis = 0.5,
+      main = "tau of lor stan",
+      upper.panel = panel.cor,
+      panel= function(x,y,...){ 
+        points(x,y,cex=0.5, pch=20); 
+        abline(a=0, b=1, col = 'steelblue')})
+```
+
+# Plots to visualize heterogeneity in MA jags.
+
+### All plots below were drawn from JAGS output with 24392 reviews.
+
+### Section1: Matrix plot of binary LOR mata analysis, blue line is 45 degree line
+```{r message=FALSE, warning=FALSE}
+jags <- read.csv('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/data/res_binary_jags/res_binary.csv')
+hte.tau50 <- read.csv('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/data/res_binary_jags/htelogit_tau50.csv')
+ab.tau50 <- read.csv('/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/data/res_binary_jags/ab_tau50.csv')
+##Draw matrix plot for est
+matrix_df <- cbind(jags %>% select(MA.id, modelname, est) %>% pivot_wider(names_from = modelname, values_from = est),
+                   hte.tau50$est, 
+                   ab.tau50$est)
+colnames(matrix_df) <- c('MA.id','IVFE LOR', 'CTElogit LOR', 'CTE beta LOR', 'IVRE LOR', 'HTElogit LOR tau(0,2)', 'HTE beta LOR', 'AB LOR', 'HTElogit LOR tau(0,50)', 'AB LOR tau(0,50)')
+
+col_order <-  c('MA.id','IVFE LOR', 'CTElogit LOR', 'CTE beta LOR', 'IVRE LOR', 'HTElogit LOR tau(0,2)', 'HTElogit LOR tau(0,50)', 'HTE beta LOR', 'AB LOR', 'AB LOR tau(0,50)')
+matrix_df = matrix_df[,col_order]  
+
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...){
+    #from help of pairs
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- abs(cor(x, y,use="pairwise.complete.obs"))
+    txt <- format(c(r, 0.123456789), digits = digits)[1]
+    txt <- paste0(prefix, txt)
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+
+pdf(file = "/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/matrix_lor.png",  
+    width = 16, 
+    height = 9)
+
+pairs(matrix_df[,-1], 
+      upper.panel = panel.cor,
+      xlim = c(-15, 15),
+      ylim = c(-15, 15),
+      cex.axis = 1.2,
+      main = "Matrix plot of LOR binary outcome",
+      panel= function(x,y,...){ 
+        points(x,y, cex=0.5, pch=20, col = rgb(red = 0, green = 0, blue = 0, alpha = 0.05)); 
+        abline(a=0, b=1, col = 'steelblue')})
+
+dev.off()
+```
+
+### Section2: matrix plot se of LOR,blue line is 45 degree line
+```{r message=FALSE, warning=FALSE}
+#Matrix plot for se of LOR
+matrix_df <- cbind(jags %>% select(MA.id, modelname, se) %>% pivot_wider(names_from = modelname, values_from = se),
+                   hte.tau50$se,
+                   ab.tau50$se)
+colnames(matrix_df) <- c('MA.id','IVFE SE','IVRE SE','CTElogit SE','CTE beta SE','HTElogit SE tau(0,2)',
+                          'AB SE', 'HTE beta SE', 'HTElogit SE tau(0,50)', 'AB SE tau(0,100)')
+
+col_order <- c("MA.id", 'IVFE SE', 'CTElogit SE', 'CTE beta SE', 'IVRE SE', 'HTElogit SE tau(0,2)', 'HTElogit SE tau(0,50)', 'HTE beta SE', 'AB SE', 'AB SE tau(0,100)')
+matrix_df = matrix_df[, col_order]
+
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...){
+    #from help of pairs
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- abs(cor(x, y,use="pairwise.complete.obs"))
+    txt <- format(c(r, 0.123456789), digits = digits)[1]
+    txt <- paste0(prefix, txt)
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+
+pdf(file = "/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/matrix_se_lor.pdf",  
+    width = 16, 
+    height = 9)
+
+pairs(matrix_df[,-1], 
+      xlim = c(0,10),
+      ylim = c(0,10),
+      cex.axis = 1.2,
+      main = "Matrix plot of standard error of LOR binary outcome",
+      upper.panel = panel.cor,
+      panel= function(x,y,...){ 
+        points(x,y, cex=0.5, pch=20, col = rgb(red = 0, green = 0, blue = 0, alpha = 0.05)); 
+        abline(a=0, b=1, col = 'steelblue')})
+
+dev.off()
+```
+
+### Section3: matrix plot tau ivre, tau htelogit, tauc htebeta, taua htebeta, tauc ab, taua ab, blue line 45 degree line
+```{r message=FALSE, warning=FALSE}
+#Matrix plot for tau
+#data prepare
+I_2 <- jags %>% filter(modelname=='ivre') %>% select(I.2)
+tau_ivre <- jags %>% filter(modelname=='ivre') %>% select(tau)
+  tau_htelogit2 <- jags %>% filter(modelname=='htevaguelogit') %>% select(tau)
+tau_htelogit50 <- hte.tau50$tau
+tauc_htebeta <- jags %>% filter(modelname=='htebeta') %>% select(tauc)
+taua_htebeta <- jags %>% filter(modelname=='htebeta') %>% select(taua)
+tauc_ab <- jags %>% filter(modelname=='ablogit') %>% select(tauc)
+taua_ab <- jags %>% filter(modelname=='ablogit') %>% select(taua)
+
+matrix_df <- cbind(tau_ivre, tau_htelogit2, tau_htelogit50)
+                   #, tauc_htebeta, taua_htebeta, tauc_ab, taua_ab)
+colnames(matrix_df) <- c('tau IVRE', 'tau HTElogit tau(0,2)', 'tau HTElogit tau(0,50)')
+                         ( 'tauc HTEBETA', 'taua HTEBETA', 'tauc AB', 'taua AB')
+
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...){
+    #from help of pairs
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- abs(cor(x, y,use="pairwise.complete.obs"))
+    txt <- format(c(r, 0.123456789), digits = digits)[1]
+    txt <- paste0(prefix, txt)
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+pdf(file = "/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/matrix_tau_figure1.png",  
+    width = 16,  
+    height = 9)
+pairs(matrix_df, 
+      xlim = c(0,25),
+      ylim = c(0,25),
+      cex.axis = 1.2,
+      main = "tau_hat of lor",
+      upper.panel = panel.cor,
+      panel= function(x,y,...){ 
+        points(x,y,cex=0.5, pch=20, col = rgb(red = 0, green = 0, blue = 0, alpha = 0.2)); 
+        abline(a=0, b=1, col = 'steelblue')})
+dev.off()
+```
+
+### Section4: tau vs lor
+
+### Section4.1: tau vs lor frequentist.
+```{r message=FALSE, warning=FALSE}
+#ivre vs ivfe
+#x axis is tau ivre, y axis is lor ivre-lor ivfe
+gg_df <- cbind(jags %>% filter(modelname=='ivre') %>% select(MA.id, tau, est),
+               jags %>% filter(modelname=='ivfe') %>% select(est, event))
+colnames(gg_df) <- c('MA.id','tau_ivre', 'ivre_est', 'ivfe_est','Event')
+gg_df$diff_est <- gg_df$ivre_est- gg_df$ivfe_est
+mean_diff <- mean(gg_df$diff_est)
+lower <- mean_diff - 1.96*sd(gg_df$diff_est)
+upper <- mean_diff + 1.96*sd(gg_df$diff_est)
+#pdf(file = "/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/tau_diff_lor.pdf")
+p <- gg_df  %>% arrange(Event) %>% 
+  ggplot(aes(x=tau_ivre, y=diff_est))+ 
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  theme_classic()+
+  ylab('LOR IVRE - LOR IVFE')+
+  #geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed", size=0.2)+
+  annotate("label", 4, mean_diff, label="Mean diff(-0.0096)", colour="red", size=1.5, label.size=0)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed", size=0.2)+
+  annotate("label", 4, lower, label="Mean diff-1.96*SD", colour="blue", size=1.5, label.size=0)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed", size=0.2)+
+  annotate("label", 4, upper, label="Mean diff+1.96*SD", colour="blue", size=1.5, label.size=0)+
+  ggtitle('tau IVRE vs LOR IVRE-LOR IVFE')+
+  scale_color_manual(values=group.colors)+
+  theme(text = element_text(size = 7))+
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+p
+#dev.off()
+```
+
+### Section4.2: tau vs lor Beyesian logit**
+```{r message=FALSE, warning=FALSE}
+#htelogit(tau(0,2)) vs ctelogit
+#x axis is tau htelogit, y axis is lor htelogit - lor cte logit
+gg_df <- cbind(jags %>% filter(modelname=='htevaguelogit') %>% select(MA.id, tau, est),
+               jags %>% filter(modelname=='ctevaguelogit') %>% select(est, event))
+colnames(gg_df) <- c('MA.id','tau_htelogit', 'htelogit_est', 'ctelogit_est','Event')
+gg_df$diff_est <- gg_df$htelogit_est- gg_df$ctelogit_est
+mean_diff <- mean(gg_df$diff_est)
+lower <- mean_diff - 1.96*sd(gg_df$diff_est)
+upper <- mean_diff + 1.96*sd(gg_df$diff_est)
+p1 <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=tau_htelogit, y=diff_est))+
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  theme_classic()+
+  ylab('LOR HTElogit - LOR CTElogit')+
+  xlim(0, 2.5)+
+  ylim(-10,6)+
+  #geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed", size=0.2)+
+  annotate("label", 2.2, mean_diff, label="Mean diff(-0.0693)", colour="red", size=1.5, label.size=0)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed", size=0.2)+
+  annotate("label", 2.2, lower, label="Mean diff-1.96*SD", colour="blue", size=1.5, label.size=0)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed", size=0.2)+
+  annotate("label", 2.2, upper, label="Mean diff+1.96*SD", colour="blue", size=1.5, label.size=0)+
+  ggtitle('tau htelogit(0,2) vs lor htelogit - lor ctelogit')+
+  scale_color_manual(values=group.colors)+
+  scale_y_continuous(breaks = seq(-10,7,2))+
+  theme(text = element_text(size = 7))+
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+p1
+
+#htelogit(tau(0,50)) vs ctelogit
+#x axis is tau htelogit, y axis is lor hte logit - lor cte logit
+gg_df <- cbind(hte.tau50$MA.id, hte.tau50$tau, hte.tau50$est,
+               jags %>% filter(modelname=='ctevaguelogit') %>% select(est, event))
+colnames(gg_df) <- c('MA.id','tau_htelogit', 'htelogit_est', 'ctelogit_est','Event')
+gg_df$diff_est <- gg_df$htelogit_est- gg_df$ctelogit_est
+mean_diff <- mean(gg_df$diff_est)
+lower <- mean_diff - 1.96*sd(gg_df$diff_est)
+upper <- mean_diff + 1.96*sd(gg_df$diff_est)
+p2 <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=tau_htelogit, y=diff_est))+
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  theme_classic()+
+  ylab('lor htelogit - lor ctelogit')+
+  #geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed", size=0.2)+
+  annotate("label", 20, mean_diff, label="Mean diff(-0.2026)", colour="red", size=1.5, label.size=0)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed", size=0.2)+
+  annotate("label", 20, lower, label="Mean diff-1.96*SD", colour="blue", size=1.5, label.size=0)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed", size=0.2)+
+  annotate("label", 20, upper, label="Mean diff+1.96*SD", colour="blue", size=1.5, label.size=0)+
+  ggtitle('tau htelogit(0,50) vs lor htelogit - lor ctelogit')+
+  scale_color_manual(values=group.colors)+
+  scale_x_continuous(breaks = seq(0,20,1))+
+  scale_y_continuous(breaks = seq(-10,7,2))+
+  theme(text = element_text(size = 7))+
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+p2
+```
+
+### Section4.3: taua vs pa(hte)-pa(cte) and tauc vs pc(hte)-pc(cte)**
+```{r message=FALSE, warning=FALSE}
+#x axis is taua, y axis is htebeta pa - ctebeta pa
+gg_df <- cbind(jags %>% filter(modelname=='ctebeta') %>% select(MA.id, pa), 
+               jags %>% filter(modelname=='htebeta') %>% select(taua, pa, event))
+colnames(gg_df) <- c('MA.id', 'ctebeta_pa', 'htebeta_taua', 'htebeta_pa', 'Event')
+gg_df$diff_pa <-gg_df$htebeta_pa-gg_df$ctebeta_pa
+mean_diff <- mean(gg_df$diff_pa, na.rm=T)
+lower <- mean_diff - 1.96*sd(gg_df$diff_pa, na.rm=T)
+upper <- mean_diff + 1.96*sd(gg_df$diff_pa, na.rm=T)
+
+pa <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=htebeta_taua, y=diff_pa))+
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  theme_classic()+
+  xlab('htebeta taua')+
+  ylab('htebeta pa - ctebeta pa')+
+  ylim(-0.5, 0.5)+
+  #geom_abline(intercept = 0, slope = 0, color ='steelblue', size=0.2)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed", size=0.2)+
+  annotate("label", 0.35, mean_diff, label="Mean diff(-0.0116)", colour="red", size=1.5, label.size=0)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed", size=0.2)+
+  annotate("label", 0.35, lower, label="Mean diff-1.96*SD", colour="blue", size=1.5, label.size=0)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed", size=0.2)+
+  annotate("label", 0.35, upper, label="Mean diff+1.96*SD", colour="blue", size=1.5, label.size=0)+
+  ggtitle('htebeta taua vs htebeta pa - ctebeta pa')+
+  scale_color_manual(values=group.colors)+
+  theme(text = element_text(size = 7))+
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+pa
+#x axis is tauc, y axis is htebeta pc- ctebeta pc
+gg_df <- cbind(jags %>% filter(modelname=='ctebeta') %>% select(MA.id, pc), 
+      jags %>% filter(modelname=='htebeta') %>% select(tauc, pc, event))
+colnames(gg_df) <- c('MA.id','ctebeta_pc', 'htebeta_tauc', 'htebeta_pc', 'Event')
+gg_df$diff_pc <-gg_df$htebeta_pc-gg_df$ctebeta_pc
+mean_diff <- mean(gg_df$diff_pc, na.rm=T)
+lower <- mean_diff - 1.96*sd(gg_df$diff_pc, na.rm=T)
+upper <- mean_diff + 1.96*sd(gg_df$diff_pc, na.rm=T)
+pc <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=htebeta_tauc, y=diff_pc))+
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  theme_classic()+
+  xlab('htebeta tauc')+
+  ylab('htebeta pc - ctebeta pc')+
+  ylim(-0.5, 0.5)+
+  #geom_abline(intercept = 0, slope = 0, color ='steelblue', size=0.7)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed", size=0.2)+
+  annotate("label", 0.35, mean_diff, label="Mean diff(-0.0090)", colour="red", size=1.5, label.size=0)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed", size=0.2)+
+  annotate("label", 0.35, lower, label="Mean diff-1.96*SD", colour="blue", size=1.5, label.size=0)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed", size=0.2)+
+  annotate("label", 0.35, upper, label="Mean diff+1.96*SD", colour="blue", size=1.5, label.size=0)+
+  ggtitle('htebeta tauc vs htebeta pc - ctebeta pc')+
+  scale_color_manual(values=group.colors)+
+  theme(text = element_text(size = 7))+
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+pc
+```
+
+### Section4.4: AB logit model, ab logit vs ctebeta
+```{r message=FALSE, warning=FALSE}
+#ablogit Omega=diag(0.02,2)
+#xaxis is taua from arm based model, y axis is ablogit pa - ctebeta pa
+gg_df <- cbind(jags %>% filter(modelname=='ctebeta') %>% select(MA.id, pa), 
+               jags %>% filter(modelname=='ablogit') %>% select(taua, pa, event))
+colnames(gg_df) <- c('MA.id', 'ctebeta_pa', 'ablogit_taua', 'ablogit_pa', 'Event')
+gg_df$diff_pa <-gg_df$ablogit_pa-gg_df$ctebeta_pa
+mean_diff <- mean(gg_df$diff_pa, na.rm=T)
+lower <- mean_diff - 1.96*sd(gg_df$diff_pa, na.rm=T)
+upper <- mean_diff + 1.96*sd(gg_df$diff_pa, na.rm=T)
+pa_ab <- gg_df %>% arrange(Event) %>%  
+  ggplot(aes(x=ablogit_taua, y=diff_pa))+
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  theme_classic()+
+  xlab('ablogit taua')+
+  ylab('ablogit pa - ctebeta pa')+
+  ylim(-0.4, 0.8)+
+  #geom_abline(intercept = 0, slope = 0, color ='steelblue', size=0.2)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed", size=0.2)+
+  annotate("label", 22, mean_diff, label="Mean diff(-0.0044)", colour="red", size=1.5, label.size=0)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed", size=0.2)+
+  annotate("label", 22, lower, label="Mean diff-1.96*SD", colour="blue", size=1.5, label.size=0)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed", size=0.2)+
+  annotate("label", 22, upper, label="Mean diff+1.96*SD", colour="blue", size=1.5, label.size=0)+
+  ggtitle('ablogit taua vs ablogit pa - ctebeta pa')+
+  scale_color_manual(values=group.colors)+
+  theme(text = element_text(size = 7))+
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+pa_ab
+
+# xaxis is tauc from arm based model, y axis is ablogit pc - ctebeta pc
+gg_df <- cbind(jags %>% filter(modelname=='ctebeta') %>% select(MA.id, pc), 
+               jags %>% filter(modelname=='ablogit') %>% select(tauc, pc, event))
+colnames(gg_df) <- c('MA.id','ctebeta_pc', 'ablogit_tauc', 'ablogit_pc', 'Event')
+gg_df$diff_pc <-gg_df$ablogit_pc-gg_df$ctebeta_pc
+mean_diff <- mean(gg_df$diff_pc, na.rm=T)
+lower <- mean_diff - 1.96*sd(gg_df$diff_pc, na.rm=T)
+upper <- mean_diff + 1.96*sd(gg_df$diff_pc, na.rm=T)
+pc_ab <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=ablogit_tauc, y=diff_pc))+
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  theme_classic()+
+  xlab('ablogit tauc')+
+  ylab('ablogit pc - ctebeta pc')+
+  xlim(0, 12.5)+
+  ylim(-0.4, 0.8)+
+  #geom_abline(intercept = 0, slope = 0, color ='steelblue', size=0.7)+
+  geom_abline(intercept = mean_diff, slope = 0, color = 'red', linetype="dashed", size=0.2)+
+  annotate("label", 11, mean_diff, label="Mean diff(-0.0103)", colour="red", size=1.5, label.size=0)+
+  geom_abline(intercept = lower, slope = 0, color = 'blue', linetype="dashed", size=0.2)+
+  annotate("label", 11, lower, label="Mean diff-1.96*SD", colour="blue", size=1.5, label.size=0)+
+  geom_abline(intercept = upper, slope = 0,  color = 'blue', linetype="dashed", size=0.2)+
+  annotate("label", 11, upper, label="Mean diff+1.96*SD", colour="blue", size=1.5, label.size=0)+
+  ggtitle('ablogit tauc vs ablogit pc - ctebeta pc')+
+  scale_color_manual(values=group.colors)+
+  theme(text = element_text(size = 7))+
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+pc_ab
+```
+
+```{r message=FALSE, warning=FALSE}
+layout <- '
+A#
+BC
+DE
+FG
+'
+wrap_plots(A = p, B = p1, C = p2, D = pa, E = pc, F = pa_ab, G = pc_ab, design = layout, guides = 'collect')
+ggsave(file = "/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/tau_diff_est_binary.png",
+      width = 6, height = 10, units = "in")
+```
+
+### Section5: tau vs se of lor
+
+### Section5.1: ivre tau vs ivre se-ivfe se and tau ivre vs (ivre se-ivfe se)/ivfe se *100%, black line is regression line
+```{r message=FALSE, warning=FALSE}
+#x axis is tau ivre, y axis is ivre se - ivfe se
+gg_df <- cbind(jags %>% filter(modelname=='ivfe') %>% select(se), 
+      jags %>% filter(modelname=='ivre') %>% select(tau, se, MA.id, event))
+colnames(gg_df) <- c('ivfe_se', 'ivre_tau', 'ivre_se', 'MA.id', 'Event')
+gg_df$diff_se <-gg_df$ivre_se-gg_df$ivfe_se
+
+p1 <- gg_df %>% arrange(Event) %>% ggplot(aes(x=ivre_tau, y=diff_se))+
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  theme_classic()+
+  xlab('ivre tau')+
+  ylab('ivre se - ivfe se')+
+  ylim(-0.1, 0.75)+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  geom_smooth(method=lm, se = FALSE, color='black', size=0.2)+
+  ggtitle('tau IVRE vs IVRE SE-IVFE SE')+
+  scale_color_manual(values=group.colors)+
+  theme(text = element_text(size = 7))+
+  #stat_cor(method = "spearman",label.x = 0.1, label.y = 0.6, size=2.5)+
+  annotate("text",x=0.7, y=0.7, size=2.5,
+             label = paste("Spearman R=0.99
+            p<0.0001"))+
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+p1
+#ggsave('tau_vs_se.pdf')
+#x axis is ivre tau, y axis is (ivre se-ivfe se)/ivfe se*100% percent change in se
+#gg_df$perc_change <- ((gg_df$ivre_se-gg_df$ivfe_se)/gg_df$ivfe_se)*100
+
+#gg_df %>% arrange(Event) %>% ggplot(aes(x=ivre_tau, y=perc_change))+
+#  geom_point(aes(color=Event))+
+#  theme_classic()+
+#  xlab('ivre tau')+
+#  ylab('percent change in se')+
+#  ylim(0,500)+
+#  geom_smooth(method=lm, se = FALSE, color='black')+
+#  geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+#  ggtitle('tau vs percent change in se')+
+#  scale_color_manual(values=group.colors)+
+#  stat_cor(method = "spearman", label.x=0.5, label.y=450)+
+#  annotate("text", x=0.5, y=500,
+#             label = paste("Spearman"))
+
+#ggsave('tau_vs_perc_change.pdf')
+```
+
+### Section5.2: htelogit tau vs htelogit se-ctelogit se and htelogit tau vs (htelogit se-ctelogit se)/ctelogit se *100%, blue line is regression line
+```{r message=FALSE, warning=FALSE}
+#Plots for tau(0,2)
+#x axis is htelogit tau , y axis is htelogit se - ctelogit se
+gg_df <- cbind(jags %>% filter(modelname=='ctevaguelogit') %>% select(se), 
+      jags %>% filter(modelname=='htevaguelogit') %>% select(tau, se, MA.id, event))
+colnames(gg_df) <- c('ctelogit_se', 'htelogit_tau', 'htelogit_se', 'MA.id', 'Event')
+gg_df$diff_se <-gg_df$htelogit_se-gg_df$ctelogit_se
+
+p2 <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=htelogit_tau, y=diff_se))+
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  theme_classic()+
+  xlab('HTElogit tau')+
+  ylab('HTElogit SE - CTElogit SE')+
+  ylim(-5, 10)+
+  geom_smooth(method=lm, se = FALSE, color='black', size=0.2)+
+  #stat_regline_equation(label.y = 10, aes(label = ..eq.label..)) +
+  #stat_regline_equation(label.y = 8, aes(label = ..rr.label..))+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  ggtitle('HTElogit tau(0,2) vs HTElogit SE-CTElogit SE')+
+  scale_color_manual(values=group.colors)+
+  theme(text = element_text(size = 7))+
+  scale_y_continuous(breaks = seq(-5,10,1))+
+  #stat_cor(method = "spearman",label.x = 0.1, label.y = 5, size=2.5)+
+  annotate("text",x=0.5, y=6, size=2.5,
+             label = paste("Spearman R=0.83
+              p<0.0001"))+
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+p2
+#x axis is ivre tau, y axis is (ivre se-ivfe se)/ivfe se*100% percent change in se
+gg_df$perc_change <- (gg_df$htelogit_se-gg_df$ctelogit_se)/gg_df$ctelogit_se*100
+
+#p2 <- gg_df %>% arrange(Event) %>% 
+#  ggplot(aes(x=htelogit_tau, y=perc_change))+
+#  geom_point(aes(color=Event))+
+#  theme_classic()+
+#  xlab('htelogit tau')+
+#  ylab('percent change in se')+
+#  ylim(0,500)+
+#  geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+#  geom_smooth(method=lm, se = FALSE, color='black')+
+#  stat_regline_equation(label.y = 400, aes(label = ..eq.label..))+
+#  stat_regline_equation(label.y = 350, aes(label = ..rr.label..))+
+#  ggtitle('htelogit tau (tau(0,50)) vs percent change in se')+
+#  scale_color_manual(values=group.colors)
+#p2
+```
+
+```{r message=FALSE, warning=FALSE}
+#draw plots for tau(0, 50)
+#x axis is htelogit tau , y axis is htelogit se - ctelogit se
+gg_df <- cbind(jags %>% filter(modelname=='ctevaguelogit') %>% select(se), 
+      hte.tau50$tau, hte.tau50$se, hte.tau50$MA.id, hte.tau50$event)
+colnames(gg_df) <- c('ctelogit_se', 'htelogit_tau', 'htelogit_se', 'MA.id', 'Event')
+gg_df$diff_se <-gg_df$htelogit_se-gg_df$ctelogit_se
+
+p3 <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=htelogit_tau, y=diff_se))+
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  theme_classic()+
+  xlab('HTElogit tau')+
+  ylab('HTElogit SE - CTElogit SE')+
+  geom_smooth(method=lm, se = FALSE, color='black', size=0.2)+
+  #stat_regline_equation(label.y = 10, aes(label = ..eq.label..)) +
+  #stat_regline_equation(label.y = 8, aes(label = ..rr.label..))+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  ggtitle('HTElogit tau(0,50) vs HTElogit SE-CTElogit SE')+
+  scale_color_manual(values=group.colors)+
+  scale_y_continuous(breaks = seq(-5,10,1))+
+  scale_x_continuous(breaks = seq(0,26,1))+
+  theme(text = element_text(size = 7))+
+  #stat_cor(method = "spearman",label.x = 0.1, label.y = 9, size=2.5)+
+  annotate("text",x=3, y=10, size=2.5,
+             label = paste("Spearman R=0.89
+             p<0.0001"))+
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+p3
+
+#x axis is ivre tau, y axis is (ivre se-ivfe se)/ivfe se*100% percent change in se
+#gg_df$perc_change <- (gg_df$htelogit_se-gg_df$ctelogit_se)/gg_df$ctelogit_se*100
+
+#p2 <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=htelogit_tau, y=perc_change))+
+  geom_point(aes(color=Event))+
+  theme_classic()+
+  xlab('htelogit tau')+
+  ylab('percent change in se')+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.7)+
+  geom_smooth(method=lm, se = FALSE, color='black')+
+  stat_regline_equation(label.y = 6000, aes(label = ..eq.label..))+
+  stat_regline_equation(label.y = 5500, aes(label = ..rr.label..))+
+  ggtitle('htelogit tau (tau(0,50)) vs percent change in se')+
+  scale_color_manual(values=group.colors)+
+  scale_x_continuous(breaks = seq(0,20,1))
+#p2
+```
+
+
+### Section5.3: htebeta taua vs htebeta se-ctebeta se, 
+```{r message=FALSE, warning=FALSE}
+#x axis is htebeta taua or htebeta tauc, y axis is htebeta se-ctebeta se
+gg_df <- cbind(jags %>% filter(modelname=='ctebeta') %>% select(se), 
+      jags %>% filter(modelname=='htebeta') %>% select(taua, tauc, se, MA.id, event))
+colnames(gg_df) <- c('ctebeta_se', 'htebeta_taua', 'htebeta_tauc','htebeta_se', 'MA.id', 'Event')
+gg_df$diff_se <-gg_df$htebeta_se-gg_df$ctebeta_se
+
+p4 <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=htebeta_taua, y=diff_se))+
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  geom_smooth(method=lm, se = FALSE, color='black', size=0.2)+
+  theme_classic()+
+  xlab('HTEbeta taua')+
+  ylab('HTEbeta SE - CTEbeta SE')+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  ggtitle('HTEbeta taua vs HTEbeta SE-CTEbeta SE')+
+  scale_color_manual(values=group.colors)+
+  theme(text = element_text(size = 7))+
+  #stat_cor(method = "spearman",label.x = 0, label.y = 2, size=2.5)+
+  annotate("text",x=0.1, y=2.5, size=2.5,
+             label = paste("Spearman R=0.21
+             p<0.0001"))
+p4
+
+p5 <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=htebeta_tauc, y=diff_se))+
+  geom_point(aes(color=Event), alpha=0.3, size=0.2)+
+  geom_smooth(method=lm, se = FALSE, color='black', size=0.2)+
+  theme_classic()+
+  xlab('HTEbeta tauc')+
+  ylab('HTEbeta SE - CTEbeta SE')+
+  geom_abline(intercept = 0, slope = 0, color ='black', size=0.2)+
+  ggtitle('HTEbeta tauc vs HTEbeta SE-CTEbeta SE')+
+  scale_color_manual(values=group.colors)+
+  theme(text = element_text(size = 7))+
+  #stat_cor(method = "spearman",label.x = 0, label.y = 2, size=2.5)+
+  annotate("text",x=0.1, y=2.5, size=2.5,
+             label = paste("Spearman R=0.22
+             p<0.0001"))
+p5
+```
+
+```{r message=FALSE, warning=FALSE}
+layout <- '
+A#
+BC
+'
+wrap_plots(A = p1, B = p2, C = p3, design = layout, guides = 'collect')
+ggsave(file = "/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/tau_diff_se_binary.png",
+      width = 7, height = 10, units = "in")
+```
+
+### Section6: AB logit corr vs se of lor, blue line is regression line
+```{r message=FALSE, warning=FALSE}
+#ablogiy Omega = diag(0.02,2)
+gg_df <- cbind(jags %>% filter(modelname=='ablogit') %>% select(MA.id, est, se, corr,taua, tauc, event))
+colnames(gg_df) <- c('MA.id', 'est','se', 'corr','taua', 'tauc','Event')
+
+#xaxis is corr, yaxis is lor
+p1 <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=corr, y=est))+
+  theme_classic()+
+  geom_point(aes(color=Event))+
+  geom_smooth(method=lm, se = FALSE, color='black')+
+  stat_regline_equation(label.y = 14, aes(label = ..eq.label..)) +
+  stat_regline_equation(label.y = 12, aes(label = ..rr.label..))+
+  xlab('ablogit corr')+
+  ylab('lor')+
+  ggtitle('ablogit corr vs lor')+
+  scale_color_manual(values=group.colors)
+p1
+
+#xaxis is corr, yaxis is se of lor
+p2 <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=corr, y=se))+
+  theme_classic()+
+  geom_point(aes(color=Event))+
+  geom_smooth(method=lm, se = FALSE, color='black')+
+  stat_regline_equation(label.y = 10, aes(label = ..eq.label..)) +
+  stat_regline_equation(label.y = 9, aes(label = ..rr.label..))+
+  xlab('ablogit corr')+
+  ylab('se or lor')+
+  ggtitle('ablogit corr vs se of lor')+
+  scale_color_manual(values=group.colors)
+p2
+
+#xaxis is corr, yaxis is taua
+p3 <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=corr, y=taua))+
+  theme_classic()+
+  geom_point(aes(color=Event))+
+  geom_smooth(method=lm, se = FALSE, color='black')+
+  stat_regline_equation(label.y = 24, aes(label = ..eq.label..)) +
+  stat_regline_equation(label.y = 23, aes(label = ..rr.label..))+
+  xlab('ablogit corr')+
+  ylab('taua')+
+  ggtitle('ablogit corr vs taua')+
+  scale_color_manual(values=group.colors)
+p3
+
+#xaxis is corr, yaxis is tauc
+p4 <- gg_df %>% arrange(Event) %>% 
+  ggplot(aes(x=corr, y=tauc))+
+  theme_classic()+
+  geom_point(aes(color=Event))+
+  geom_smooth(method=lm, se = FALSE, color='black')+
+  stat_regline_equation(label.y = 20, aes(label = ..eq.label..)) +
+  stat_regline_equation(label.y = 19, aes(label = ..rr.label..))+
+  xlab('ablogit corr')+
+  ylab('tauc')+
+  ggtitle('ablogit corr vs tauc')+
+  scale_color_manual(values=group.colors)
+p4
+```
+
+Summarise number of significant studies based on number of studies
+```{r}
+temp <- jags %>% filter(modelname=='ivre', num_studies>=30, 0>low|up<0)
+```
+
+```{r message=FALSE, warning=FALSE}
+#I^2 vs tau
+gg_df <- cbind(I_2 <- jags %>% filter(modelname=='ivre') %>% select(I.2),
+               tau_ivre <- jags %>% filter(modelname=='ivre') %>% select(tau),
+               tau_htelogit2 <- jags %>% filter(modelname=='htevaguelogit') %>% select(tau),
+               tau_htelogit50 <- hte.tau50$tau,
+               tauc_htebeta <- jags %>% filter(modelname=='htebeta') %>% select(tauc),
+               taua_htebeta <- jags %>% filter(modelname=='htebeta') %>% select(taua),
+               tauc_ab <- jags %>% filter(modelname=='ablogit') %>% select(tauc),
+               taua_ab <- jags %>% filter(modelname=='ablogit') %>% select(taua))
+colnames(gg_df) <- c('I_2', 'tau.ivre', 'tau.htelogit.tau2',
+                     'tau.htelogit.tau50', 'tauc.htebeta', 'taua.htebeta',
+                     'tauc.ab', 'taua.ab')
+gg_df <- gg_df %>% pivot_longer(!'I_2', names_to = "model.tau", values_to = "tau")
+gg_df$model.tau <- factor(gg_df$model.tau, levels = c( 'tau.ivre', 'tau.htelogit.tau2',
+                     'tau.htelogit.tau50', 'tauc.htebeta', 'taua.htebeta',
+                     'tauc.ab', 'taua.ab'))
+gg_df %>% arrange(model.tau) %>% 
+  ggplot(aes(x=I_2, y=tau))+
+  geom_point(alpha=0.2, size=0.2)+
+  theme_classic()+
+  scale_x_continuous(breaks = seq(0,100,10))+
+  theme(text = element_text(size = 7))+
+  facet_wrap(~model.tau,
+             scales = 'free',
+             strip.position = 'left')+
+  ggtitle('I^2 vs tau, taua, tauc')
+
+ggsave(file = "/Users/MengyiHu/Desktop/Heterogeneity_Meta_Analysis/plots/I^2_tau.png",
+      width = 7, height = 5, units = "in")
+```
+
+### Study significance tau(0,2) and tau(0,50)
+```{r}
+dat <- cbind(jags %>% filter(modelname=='ctevaguelogit') %>% select(MA.id, low, up, num_studies),
+             jags %>% filter(modelname=='ivfe') %>% select(low, up))
+colnames(dat) <- c('MA.id', 'low_cte', 'up_cte', 'num_studies', 'low_ivfe', 'up_ivfe')
+
+dat %>% filter((low_cte>0|up_cte<0) & (low_ivfe>0|up_ivfe<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_cte>0|up_cte<0) & (low_ivfe<0 & up_ivfe>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter(low_cte<0 & up_cte>0 & (low_ivfe>0 | up_ivfe<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_cte<0 & up_cte>0) & (low_ivfe<0 & up_ivfe>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+```
+### cte logit vs htelogit tau(0,2)
+```{r}
+dat <- cbind(jags %>% filter(modelname=='ctevaguelogit') %>% select(MA.id, low, up, num_studies),
+             jags %>% filter(modelname=='htevaguelogit') %>% select(low, up))
+colnames(dat) <- c('MA.id', 'low_cte', 'up_cte', 'num_studies', 'low_hte', 'up_hte')
+
+dat %>% filter((low_cte>0|up_cte<0) & (low_hte>0|up_hte<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_cte>0|up_cte<0) & (low_hte<0 & up_hte>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter(low_cte<0 & up_cte>0 & (low_hte>0 | up_hte<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_cte<0 & up_cte>0) & (low_hte<0 & up_hte>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+```
+### cte logit vs htelogit tau(0,50)
+```{r}
+dat <- cbind(jags %>% filter(modelname=='ctevaguelogit') %>% select(MA.id, low, up, num_studies),
+             hte.tau50 %>% select(low, up))
+colnames(dat) <- c('MA.id', 'low_cte', 'up_cte', 'num_studies', 'low_hte', 'up_hte')
+
+dat %>% filter((low_cte>0|up_cte<0) & (low_hte>0|up_hte<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_cte>0|up_cte<0) & (low_hte<0 & up_hte>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter(low_cte<0 & up_cte>0 & (low_hte>0 | up_hte<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_cte<0 & up_cte>0) & (low_hte<0 & up_hte>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+```
+### IVFE vs ctelogit
+```{r}
+dat <- cbind(jags %>% filter(modelname=='ctevaguelogit') %>% select(MA.id, low, up, num_studies),
+             jags %>% filter(modelname=='ivfe') %>% select(low, up))
+colnames(dat) <- c('MA.id', 'low_cte', 'up_cte', 'num_studies', 'low_ivfe', 'up_ivfe')
+
+dat %>% filter((low_cte>0|up_cte<0) & (low_ivfe>0|up_ivfe<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_cte>0|up_cte<0) & (low_ivfe<0 & up_ivfe>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter(low_cte<0 & up_cte>0 & (low_ivfe>0 | up_ivfe<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_cte<0 & up_cte>0) & (low_ivfe<0 & up_ivfe>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+```
+### ivre vs htelogit tau(0,2)
+```{r}
+dat <- cbind(jags %>% filter(modelname=='htevaguelogit') %>% select(MA.id, low, up, num_studies),
+             jags %>% filter(modelname=='ivre') %>% select(low, up))
+colnames(dat) <- c('MA.id', 'low_hte', 'up_hte', 'num_studies', 'low_ivre', 'up_ivre')
+
+dat %>% filter((low_hte>0|up_hte<0) & (low_ivre>0|up_ivre<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_hte>0|up_hte<0) & (low_ivre<0 & up_ivre>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter(low_hte<0 & up_hte>0 & (low_ivre>0 | up_ivre<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_hte<0 & up_hte>0) & (low_ivre<0 & up_ivre>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+```
+### ivre vs htelogit tau(0,50)
+```{r}
+dat <- cbind(hte.tau50 %>% select(MA.id, low, up, num_studies),
+             jags %>% filter(modelname=='ivre') %>% select(low, up))
+colnames(dat) <- c('MA.id', 'low_hte', 'up_hte', 'num_studies', 'low_ivre', 'up_ivre')
+
+dat %>% filter((low_hte>0|up_hte<0) & (low_ivre>0|up_ivre<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_hte>0|up_hte<0) & (low_ivre<0 & up_ivre>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter(low_hte<0 & up_hte>0 & (low_ivre>0 | up_ivre<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_hte<0 & up_hte>0) & (low_ivre<0 & up_ivre>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+```
+### htelogit tau(0,2) vs htebeta
+```{r}
+dat <- cbind(jags %>% filter(modelname=='htevaguelogit') %>% select(MA.id, low, up, num_studies),
+       jags %>% filter(modelname=='htebeta') %>% select(low, up))
+
+colnames(dat) <- c('MA.id', 'low_hte', 'up_hte', 'num_studies', 'low_beta', 'up_beta')
+
+dat %>% filter((low_hte>0|up_hte<0) & (low_beta>0|up_beta<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_hte>0|up_hte<0) & (low_beta<0 & up_beta>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter(low_hte<0 & up_hte>0 & (low_beta>0 | up_beta<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_hte<0 & up_hte>0) & (low_beta<0 & up_beta>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+```
+
+### htelogit tau(0,50) vs htebeta
+```{r}
+dat <- cbind(hte.tau50 %>% select(MA.id, low, up, num_studies),
+       jags %>% filter(modelname=='htebeta') %>% select(low, up))
+
+colnames(dat) <- c('MA.id', 'low_hte', 'up_hte', 'num_studies', 'low_beta', 'up_beta')
+
+dat %>% filter((low_hte>0|up_hte<0) & (low_beta>0|up_beta<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_hte>0|up_hte<0) & (low_beta<0 & up_beta>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter(low_hte<0 & up_hte>0 & (low_beta>0 | up_beta<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_hte<0 & up_hte>0) & (low_beta<0 & up_beta>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+```
+
+### htelogit(0,2) vs AB tau(0,2)
+```{r}
+dat <- cbind(jags %>% filter(modelname=='htevaguelogit') %>% select(MA.id, low, up, num_studies),
+       jags %>% filter(modelname=='ablogit') %>% select(low, up))
+
+colnames(dat) <- c('MA.id', 'low_hte', 'up_hte', 'num_studies', 'low_ab', 'up_ab')
+
+dat %>% filter((low_hte>0|up_hte<0) & (low_ab>0|up_ab<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_hte>0|up_hte<0) & (low_ab<0 & up_ab>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter(low_hte<0 & up_hte>0 & (low_ab>0 | up_ab<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_hte<0 & up_hte>0) & (low_ab<0 & up_ab>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+```
+### htelogit(0,50) vs AB tau(0,50)
+```{r}
+dat <- cbind(hte.tau50 %>% select(MA.id, low, up, num_studies),
+             ab.tau50 %>% select(low, up))
+
+colnames(dat) <- c('MA.id', 'low_hte', 'up_hte', 'num_studies', 'low_ab', 'up_ab')
+
+dat %>% filter((low_hte>0|up_hte<0) & (low_ab>0|up_ab<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_hte>0|up_hte<0) & (low_ab<0 & up_ab>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter(low_hte<0 & up_hte>0 & (low_ab>0 | up_ab<0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+dat %>% filter((low_hte<0 & up_hte>0) & (low_ab<0 & up_ab>0)) %>% summarise(median=median(num_studies), IQR = IQR(num_studies))
+```
+

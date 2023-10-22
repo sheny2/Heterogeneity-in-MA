@@ -1,0 +1,173 @@
+---
+title: "Hetero Analysis"
+author: "Yicheng Shen"
+date: "06/09/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mosaic)
+ggplot2::theme_set(ggplot2::theme_bw())
+knitr::opts_chunk$set(out.width = "100%", fig.align = 'center')
+```
+
+
+```{r}
+res <- read.csv('res/res_binary.csv')   
+res2 <- read.csv('res/htelogit_tau50.csv')   
+res3 <- read.csv('res/ab_tau50.csv')   
+
+modelname = rep("htelogit_tau50", nrow(res2))
+col.group = rep("Bayesian", nrow(res2))
+pch.group = rep("HTE model", nrow(res2))
+
+res2 = cbind(res2[, 1:3], modelname, col.group, pch.group, res2[, 4:ncol(res2)])
+res2$I.2 = NA
+
+
+modelname = rep("ablogit_tau50", nrow(res3))
+col.group = rep("Bayesian", nrow(res3))
+pch.group = rep("HTE model", nrow(res3))
+
+res3 = cbind(res3[, 1:3], modelname, col.group, pch.group, res3[, 4:ncol(res3)])
+res3$I.2 = NA
+
+res_all = rbind(res, res2, res3)
+```
+
+
+
+
+```{r}
+result = res_all %>% 
+  mutate(modelname = factor(modelname, levels = c("ivfe", "ivre", "ctevaguelogit","ctebeta", "htevaguelogit", "htelogit_tau50", "htebeta", "ablogit", "ablogit_tau50")))
+
+n_distinct(result$MA.id)
+nrow(result) # 9 model result per study
+
+table((result %>% distinct(MA.id, .keep_all = TRUE))$event)
+```
+
+
+```{r}
+result = result %>% 
+  mutate(Significant_num = 1-as.numeric(0 >= low & 0 <= up)) %>% 
+  mutate(Significant = ifelse(Significant_num == "1", "significant", "non-significant"))
+
+result$Significant <- factor(result$Significant, levels = c("significant", "non-significant")) 
+
+# result %>% ggplot() + geom_ribbon(aes(x = MA.id, ymin = low, ymax = up)) + facet_wrap(~modelname)
+```
+
+
+## analyze seperate outcome type
+
+```{r}
+result_com = result %>% filter(event %in% c("common"))
+n_distinct(result_com$MA.id)
+result_if = result %>% filter(event %in% c("infrequent"))
+n_distinct(result_if$MA.id)
+result_ra = result %>% filter(event %in% c("rare"))
+n_distinct(result_ra$MA.id)
+result_vra = result %>% filter(event %in% c("very rare"))
+n_distinct(result_vra$MA.id)
+```
+
+
+
+```{r}
+create_table <- function(result){
+
+modelnames <- unique(result$modelname)
+
+table_list <- list()
+
+for (i in 1:(length(modelnames)-1)) {
+  for (j in (i+1):length(modelnames)) {
+    model1 <- modelnames[i]
+    model2 <- modelnames[j]
+    
+    # Subset the data for the current combination of modelnames
+    subset_data <- result[result$modelname %in% c(model1, model2), ]
+    
+    # Create a 2x2 contingency table
+    contingency_table <- table(subset_data$Significant[subset_data$modelname == model1],
+                               subset_data$Significant[subset_data$modelname == model2])
+    
+    # Add the table to the list
+    table_list[[paste(model1, model2, sep = "_vs_")]] <- contingency_table
+  }
+}
+
+# Print the tables
+for (table_name in names(table_list)) {
+  cat("Table:", table_name, "\n")
+  print(table_list[[table_name]])
+  cat("\n")
+}
+}
+```
+
+
+```{r}
+# create_table(result_com)
+# create_table(result_if)
+# create_table(result_ra)
+# create_table(result_vra)
+```
+
+
+
+# summarize
+
+```{r, fig.width=12, warning=F, message=F}
+# 23492
+
+result %>% 
+  group_by(modelname) %>% summarise(Sig_sum = as.integer(sum(Significant_num, na.rm = T))) %>% mutate(percentage_total = 100 * Sig_sum/table(result$modelname))
+
+result_sigsum = result %>% group_by(MA.id, num_studies, event) %>% summarise(Sig_sum = as.integer(sum(Significant_num, na.rm = T)))
+
+result_sigsum %>% ggplot() + geom_jitter(aes(num_studies, factor(Sig_sum)), alpha = 0.3, height = 0.2) + facet_wrap(~event)
+
+result_sigsum %>% ggplot() + geom_boxplot(aes(factor(Sig_sum), num_studies)) + facet_wrap(~event) + coord_flip()
+
+table(result_sigsum$Sig_sum)
+round(proportions(table(result_sigsum$Sig_sum))*100,3)
+
+table(result_sigsum$event, result_sigsum$Sig_sum)
+round(proportions(table(result_sigsum$event, result_sigsum$Sig_sum), margin = 1)*100,3)
+
+
+result %>% group_by(MA.id) %>% mutate(Sig_sum = as.integer(sum(Significant_num, na.rm = T))) %>% filter(Significant == "significant") %>% 
+  ggplot(aes(factor(Sig_sum), fill = modelname)) +
+  geom_bar(color = "Black") + labs(x = "Number of models with significant results")
+
+result %>% group_by(MA.id) %>% mutate(Sig_sum = as.integer(sum(Significant_num, na.rm = T))) %>% 
+  filter(Significant == "significant") %>% 
+  ggplot(aes(factor(Sig_sum), fill = modelname)) +
+  geom_bar(position = "fill", color = "Black") +
+  scale_y_continuous(labels = scales::percent) + labs(x = "Number of models with significant results", y = "proportion")
+
+
+# result %>% group_by(MA.id, num_studies, event) %>% mutate(Sig_sum = as.integer(sum(Significant_num, na.rm = T))) %>% 
+#   ggplot() + geom_jitter(aes(num_studies, factor(Sig_sum), color = modelname), alpha = 0.3, height = 0.1) + facet_wrap(~event)
+```
+```{r}
+result %>% filter(num_studies > 100, event == "very rare")
+
+result %>% filter(num_studies > 25, event == "very rare")
+```
+
+
+```{r, fig.width=12}
+result_narm %>% 
+ggplot() + geom_density(aes(num_studies, color = Significant)) + facet_wrap(~event)
+result_narm %>% 
+ggplot() + geom_boxplot(aes(num_studies,color = Significant))+ facet_wrap(~event)
+```
+
+
+
+
