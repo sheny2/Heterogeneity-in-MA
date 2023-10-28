@@ -195,6 +195,63 @@ ggplot() +
 ,nrow = 1)
 ```
 
+```{r, fig.width=15, fig.height=4.5}
+result_ivre_tau = result %>% filter(modelname %in% c("ivfe", "ivre")) %>% group_by(MA.id) %>% mutate(diff_se = diff(se)) %>%  filter(modelname == "ivre") %>% ungroup()
+
+result_htevaguelogit_tau = result %>% filter(modelname %in% c("ctevaguelogit", "htevaguelogit")) %>% group_by(MA.id) %>% mutate(diff_se = diff(se)) %>%  filter(modelname == "htevaguelogit") %>% ungroup()
+
+result_htelogit_tau50_tau = result %>% filter(modelname %in% c("ctevaguelogit", "htelogit_tau50")) %>% group_by(MA.id) %>% mutate(diff_se = diff(se)) %>%  filter(modelname == "htelogit_tau50") %>% ungroup()
+
+ grid.arrange(
+result_ivre_tau %>% 
+ggplot() + 
+  geom_point(data = result_ivre_tau[which(result_ivre_tau$event == "common"),], 
+             aes(tau, diff_se, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_ivre_tau[which(result_ivre_tau$event == "infrequent"),], 
+             aes(tau, diff_se, color = event), alpha = 0.5, size = 0.5)+
+  geom_point(data = result_ivre_tau[which(result_ivre_tau$event == "rare"),], 
+             aes(tau, diff_se, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_ivre_tau[which(result_ivre_tau$event == "very rare"),], 
+             aes(tau, diff_se, color = event), alpha = 0.5, size = 0.5) +
+  scale_color_manual(values = c("Gray", "Green", "Orange", "Red")) + 
+  labs(title = "ivre - ivfe", x = "tau from ivre") + 
+  geom_smooth(aes(tau, diff_se), se = F, linetype = "dashed", method = "lm")
+  # geom_abline(intercept = 0, slope = 1, color = "Blue", linetype = "dashed")
+,
+ 
+result_htevaguelogit_tau %>% 
+ggplot() + 
+  geom_point(data = result_htevaguelogit_tau[which(result_htevaguelogit_tau$event == "common"),], 
+             aes(tau, diff_se, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_htevaguelogit_tau[which(result_htevaguelogit_tau$event == "infrequent"),], 
+             aes(tau, diff_se, color = event), alpha = 0.5, size = 0.5)+
+  geom_point(data = result_htevaguelogit_tau[which(result_htevaguelogit_tau$event == "rare"),], 
+             aes(tau, diff_se, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_htevaguelogit_tau[which(result_htevaguelogit_tau$event == "very rare"),], 
+             aes(tau, diff_se, color = event), alpha = 0.5, size = 0.5) +
+  scale_color_manual(values = c("Gray", "Green", "Orange", "Red")) + 
+  labs(title = "htevaguelogit - ctevaguelogit", x = "tau from htevaguelogit") + 
+  geom_smooth(aes(tau, diff_se), se = F, linetype = "dashed", method = "lm")
+,
+
+ 
+result_htelogit_tau50_tau %>% 
+ggplot() + 
+  geom_point(data = result_htelogit_tau50_tau[which(result_htelogit_tau50_tau$event == "common"),], 
+             aes(tau, diff_se, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_htelogit_tau50_tau[which(result_htelogit_tau50_tau$event == "infrequent"),], 
+             aes(tau, diff_se, color = event), alpha = 0.5, size = 0.5)+
+  geom_point(data = result_htelogit_tau50_tau[which(result_htelogit_tau50_tau$event == "rare"),], 
+             aes(tau, diff_se, color = event), alpha = 0.5, size = 0.5)+ 
+  geom_point(data = result_htelogit_tau50_tau[which(result_htelogit_tau50_tau$event == "very rare"),], 
+             aes(tau, diff_se, color = event), alpha = 0.5, size = 0.5) +
+  scale_color_manual(values = c("Gray", "Green", "Orange", "Red")) + 
+  labs(title = "htelogit_tau50 - ctevaguelogit", x = "tau from htelogit_tau50") + 
+  geom_smooth(aes(tau, diff_se), se = F, linetype = "dashed", method = "lm")
+,nrow = 1)
+
+```
+
 
 ```{r, fig.width=12, fig.height=10}
 events <- c("common", "infrequent", "rare", "very rare")
@@ -541,16 +598,11 @@ result %>% group_by(MA.id) %>% mutate(Sig_sum = as.integer(sum(Significant_num, 
 
 
 
-
-
-
-
-
 # waic
 
 For best model comparison among seven Bayesian models (exclude ivfe and ivre)
 
-```{r, fig.width=12, fig.height=6}
+```{r, fig.width=14, fig.height=6}
 result_bayesian %>%
   group_by(MA.id) %>%
   mutate(order = rank(waic, ties.method = "min")) %>% 
@@ -559,13 +611,15 @@ result_bayesian %>%
   summarize(count = n()) %>%
   mutate(percentage = count / sum(count) * 100) %>%
   ggplot(aes(x = modelname, y = percentage, fill = as.factor(order))) +
-  geom_bar(stat = "identity", position = "dodge") +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.85)) +
   geom_text(aes(label = paste0(round(percentage, 1), "%"), vjust = -0.5), position = position_dodge(width = 0.9), size = 2) +
   labs(title = "Percentage of Ranking Orders by Model",
        x = "Model",
        y = "Percentage", fill = "waic ranking") +
   scale_fill_manual(values = RColorBrewer::brewer.pal(7, "RdYlBu"))
 ```
+
+
 
 ```{r, fig.width=12, fig.height=8}
 result_bayesian %>%
@@ -577,7 +631,139 @@ result_bayesian %>%
                 label = scales::percent(after_stat(count / tapply(count, x, sum)[x]), accuracy = 0.01), 
                 group = modelname), size = 3, position = position_fill(vjust = 0.5), stat = "count") + 
   scale_y_continuous(labels = scales::percent) + 
-  labs(x = "waic ranking (1 meaning lowest)", y = "proportion")
+  labs(x = "waic ranking (1 meaning lowest)", y = "proportion", title = "Model waic ranking among all MAs")
+```
+
+
+
+```{r, fig.width=12, fig.height=8}
+result_bayesian_rare = result_narm %>% filter(col.group == "Bayesian", event != "common")
+
+result_bayesian_rare %>%
+  group_by(MA.id) %>%
+  mutate(order = rank(waic, ties.method = "min")) %>% 
+  ggplot(aes(factor(order), fill = modelname)) +
+  geom_bar(position = "fill", color = "Black") +
+  geom_text(aes(x = factor(order), 
+                label = scales::percent(after_stat(count / tapply(count, x, sum)[x]), accuracy = 0.01), 
+                group = modelname), size = 3, position = position_fill(vjust = 0.5), stat = "count") + 
+  scale_y_continuous(labels = scales::percent) + 
+  labs(x = "waic ranking (1 meaning lowest)", y = "proportion", title = "Model waic ranking among rare outcome MAs")
+```
+
+
+### htelogit  
+
+```{r, echo=T}
+result_htevaguelogit_tau = result %>% filter(modelname %in% c("ctevaguelogit", "htevaguelogit")) %>% group_by(MA.id) %>% mutate(diff_waic = diff(waic)) %>%  filter(modelname == "htevaguelogit") %>% ungroup()
+
+mean(result_htevaguelogit_tau$diff_waic < 0) # htevaguelogit has better waic than ctevaguelogit
+
+
+result_htelogit_tau50_tau = result %>% filter(modelname %in% c("ctevaguelogit", "htelogit_tau50")) %>% group_by(MA.id) %>% mutate(diff_waic = diff(waic)) %>%  filter(modelname == "htelogit_tau50") %>% ungroup()
+
+mean(result_htelogit_tau50_tau$diff_waic < 0) # htelogit_tau50 has better waic than ctevaguelogit
+
+
+result_htelogit = result %>% filter(modelname %in% c("htevaguelogit", "htelogit_tau50")) %>% group_by(MA.id) %>% mutate(diff_waic = diff(waic)) %>%  filter(modelname == "htelogit_tau50") %>% ungroup()
+
+mean(result_htelogit$diff_waic < 0) # htelogit_tau50 has better waic than htevaguelogit
+```
+
+
+
+### ablogit
+
+```{r, echo=T}
+result_ablogit_tau = result_narm %>% filter(modelname %in% c("ctevaguelogit", "ablogit")) %>% group_by(MA.id) %>% 
+  mutate(diff_waic = diff(waic)) %>%  filter(modelname == "ablogit") %>% ungroup()
+
+mean(result_ablogit_tau$diff_waic < 0) # ablogit has better waic than ctevaguelogit
+
+
+result_ablogit_tau50_tau = result_narm %>% 
+  filter(modelname %in% c("ctevaguelogit", "ablogit_tau50")) %>% group_by(MA.id) %>% 
+  mutate(diff_waic = diff(waic)) %>%  filter(modelname == "ablogit_tau50") %>% ungroup()
+
+mean(result_ablogit_tau50_tau$diff_waic < 0) # ablogit_tau50 has better waic than ctevaguelogit
+
+
+result_ablogit_tau = result_narm %>% filter(modelname %in% c("ctebeta", "ablogit")) %>% group_by(MA.id) %>% 
+  mutate(diff_waic = diff(waic)) %>%  filter(modelname == "ablogit") %>% ungroup()
+
+mean(result_ablogit_tau$diff_waic < 0) # ablogit has better waic than ctebeta
+
+
+result_ablogit_tau50_tau = result_narm %>% 
+  filter(modelname %in% c("ctebeta", "ablogit_tau50")) %>% group_by(MA.id) %>% 
+  mutate(diff_waic = diff(waic)) %>%  filter(modelname == "ablogit_tau50") %>% ungroup()
+
+mean(result_ablogit_tau50_tau$diff_waic < 0) # ablogit_tau50 has better waic than ctebeta
+
+
+result_ablogit = result_narm %>% 
+  filter(modelname %in% c("ablogit", "ablogit_tau50")) %>% group_by(MA.id) %>% 
+  mutate(diff_waic = diff(waic)) %>%  filter(modelname == "ablogit_tau50") %>% ungroup()
+
+mean(result_ablogit$diff_waic < 0) # ablogit_tau50 has better waic than ablogit
+```
+
+
+
+```{r, warning=F, fig.width=8}
+modelnames <- unique((result_bayesian$modelname))
+
+# modelnames <- factor(modelnames, 
+#                      levels = c("ctevaguelogit","ctebeta", 
+#                                 "htevaguelogit", "htelogit_tau50", "htebeta", 
+#                                 "ablogit", "ablogit_tau50"))
+
+percentage_matrix <- matrix(0, nrow = length(modelnames), ncol = length(modelnames))
+rownames(percentage_matrix) = colnames(percentage_matrix) = modelnames
+
+for (i in 1:length(modelnames)) {
+  for (j in 1:length(modelnames)) {
+    model_i <- modelnames[i]
+    model_j <- modelnames[j]
+    
+    percentage <- mean(result_bayesian[result_bayesian$modelname == model_i,]$waic < 
+                         result_bayesian[result_bayesian$modelname == model_j,]$waic)
+    
+    percentage_matrix[i, j] <- percentage
+  }
+}
+
+
+print(round(percentage_matrix,3))
+percentage_matrix2 = percentage_matrix
+
+percentage_matrix2[upper.tri(percentage_matrix2)] <- 0
+print(round(percentage_matrix2,3))
+
+# print(percentage_matrix2)
+# gplots::heatmap.2(percentage_matrix2, dendrogram = "none")
+
+# heatmap(percentage_matrix2, Rowv = NA, Colv = NA) 
+
+# 
+# ggplot(data_melt, aes(X1, X2)) +                         
+#   geom_tile(aes(fill = value))
+
+
+data_melt <- reshape::melt(percentage_matrix2)           
+# Create the heatmap using geom_tile
+ggplot(data_melt, aes(X2, X1)) +
+  geom_tile(aes(fill = value)) +
+  scale_fill_gradient(low = "white", high = "blue") +  # Customize the color gradient
+  labs(title = "Heatmap of waic comparison") + 
+  geom_text(aes(label = round(value, 3), color = ifelse(value > 0.5, "white", "black"))) + 
+  labs(x = "", y = "") + 
+  theme(legend.position = "none")+
+  scale_x_discrete(position = "top") +  # Reverse x-axis ticks
+  scale_y_discrete(limits = rev(levels(data_melt$X2))) 
 
 ```
+
+
+
 
