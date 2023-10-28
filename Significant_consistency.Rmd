@@ -148,12 +148,17 @@ result %>% group_by(MA.id) %>% mutate(Sig_sum = as.integer(sum(Significant_num, 
   filter(Significant == "significant") %>% 
   ggplot(aes(factor(Sig_sum), fill = modelname)) +
   geom_bar(position = "fill", color = "Black") +
-  scale_y_continuous(labels = scales::percent) + labs(x = "Number of models with significant results", y = "proportion")
+  scale_y_continuous(labels = scales::percent) + labs(x = "Number of models with significant results", y = "proportion") + 
+    geom_text(aes(x = factor(Sig_sum), 
+                label = scales::percent(after_stat(count / tapply(count, x, sum)[x])), 
+                group = modelname), size = 3, position = position_fill(vjust = .5), stat = "count")  
 
 
 # result %>% group_by(MA.id, num_studies, event) %>% mutate(Sig_sum = as.integer(sum(Significant_num, na.rm = T))) %>% 
 #   ggplot() + geom_jitter(aes(num_studies, factor(Sig_sum), color = modelname), alpha = 0.3, height = 0.1) + facet_wrap(~event)
 ```
+
+
 ```{r}
 result %>% filter(num_studies > 100, event == "very rare")
 

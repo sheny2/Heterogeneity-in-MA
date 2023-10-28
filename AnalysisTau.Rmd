@@ -493,9 +493,10 @@ gridExtra::grid.arrange(grobs = plots, nrow = length(events))
 
 
 # remove outliers CD002809 CD013438
+# result_tau2 %>% filter(tauc >= 20, event == "very rare")
 
 result_tau2 = result %>% 
-  filter(modelname %in% c("ablogit", "ablogit_tau50"), ! CDSR.id %in% c("CD002809","CD013438")) %>% 
+  filter(modelname %in% c("ablogit", "ablogit_tau50"), ! CDSR.id %in% c("CD002809","CD013438", "CD012859", "CD004278")) %>% 
   mutate(num_study = ifelse(num_studies<=20, "medium", "large")) %>% 
   mutate(num_study = ifelse(num_studies<=10, "small", num_study)) %>% 
   mutate(num_study = ifelse(num_studies<=5, "very small", num_study))

@@ -158,7 +158,10 @@ result_bayesian %>%
   mutate(order = rank(waic, ties.method = "min")) %>% 
   ggplot(aes(factor(order), fill = modelname)) +
   geom_bar(position = "fill", color = "Black") +
-  scale_y_continuous(labels = scales::percent) + labs(x = "", y = "proportion")
+  geom_text(aes(x = factor(order), 
+                label = scales::percent(after_stat(count / tapply(count, x, sum)[x])), 
+                group = modelname), size = 3, position = position_fill(vjust = .5), stat = "count") + 
+  scale_y_continuous(labels = scales::percent) + labs(x = "waic ranking (1 meaning lowest)", y = "proportion")
 ```
 
 
