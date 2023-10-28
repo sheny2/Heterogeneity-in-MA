@@ -740,14 +740,19 @@ percentage_matrix2 = percentage_matrix
 percentage_matrix2[upper.tri(percentage_matrix2)] <- 0
 print(round(percentage_matrix2,3))
 
-# print(percentage_matrix2)
-# gplots::heatmap.2(percentage_matrix2, dendrogram = "none")
 
-# heatmap(percentage_matrix2, Rowv = NA, Colv = NA) 
+data_melt <- reshape::melt(percentage_matrix)           
+# Create the heatmap using geom_tile
+ggplot(data_melt, aes(X2, X1)) +
+  geom_tile(aes(fill = value)) +
+  scale_fill_gradient(low = "white", high = "blue") +  # Customize the color gradient
+  labs(title = "Heatmap of waic comparison") + 
+  geom_text(aes(label = round(value, 3), color = ifelse(value > 0.5, "white", "black"))) + 
+  labs(x = "", y = "") + 
+  theme(legend.position = "none")+
+  scale_x_discrete(position = "top") +  # Reverse x-axis ticks
+  scale_y_discrete(limits = rev(levels(data_melt$X2))) 
 
-# 
-# ggplot(data_melt, aes(X1, X2)) +                         
-#   geom_tile(aes(fill = value))
 
 
 data_melt <- reshape::melt(percentage_matrix2)           
