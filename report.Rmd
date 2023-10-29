@@ -754,6 +754,64 @@ ggplot(data_melt, aes(X2, X1)) +
   scale_y_discrete(limits = rev(levels(data_melt$X2))) 
 
 
+data_melt <- reshape::melt(percentage_matrix2)           
+# Create the heatmap using geom_tile
+ggplot(data_melt, aes(X2, X1)) +
+  geom_tile(aes(fill = value)) +
+  scale_fill_gradient(low = "white", high = "blue") +  # Customize the color gradient
+  labs(title = "Heatmap of waic comparison") + 
+  geom_text(aes(label = round(value, 3), color = ifelse(value > 0.5, "white", "black"))) + 
+  labs(x = "", y = "") + 
+  theme(legend.position = "none")+
+  scale_x_discrete(position = "top") +  # Reverse x-axis ticks
+  scale_y_discrete(limits = rev(levels(data_melt$X2))) 
+```
+
+
+```{r, warning=F, fig.width=8}
+# rare cases
+modelnames <- unique((result_bayesian_rare$modelname))
+
+# modelnames <- factor(modelnames, 
+#                      levels = c("ctevaguelogit","ctebeta", 
+#                                 "htevaguelogit", "htelogit_tau50", "htebeta", 
+#                                 "ablogit", "ablogit_tau50"))
+
+percentage_matrix <- matrix(0, nrow = length(modelnames), ncol = length(modelnames))
+rownames(percentage_matrix) = colnames(percentage_matrix) = modelnames
+
+for (i in 1:length(modelnames)) {
+  for (j in 1:length(modelnames)) {
+    model_i <- modelnames[i]
+    model_j <- modelnames[j]
+    
+    percentage <- mean(result_bayesian_rare[result_bayesian_rare$modelname == model_i,]$waic < 
+                         result_bayesian_rare[result_bayesian_rare$modelname == model_j,]$waic)
+    
+    percentage_matrix[i, j] <- percentage
+  }
+}
+
+
+print(round(percentage_matrix,3))
+percentage_matrix2 = percentage_matrix
+
+percentage_matrix2[upper.tri(percentage_matrix2)] <- 0
+print(round(percentage_matrix2,3))
+
+
+data_melt <- reshape::melt(percentage_matrix)           
+# Create the heatmap using geom_tile
+ggplot(data_melt, aes(X2, X1)) +
+  geom_tile(aes(fill = value)) +
+  scale_fill_gradient(low = "white", high = "blue") +  # Customize the color gradient
+  labs(title = "Heatmap of waic comparison") + 
+  geom_text(aes(label = round(value, 3), color = ifelse(value > 0.5, "white", "black"))) + 
+  labs(x = "", y = "") + 
+  theme(legend.position = "none")+
+  scale_x_discrete(position = "top") +  # Reverse x-axis ticks
+  scale_y_discrete(limits = rev(levels(data_melt$X2))) 
+
 
 data_melt <- reshape::melt(percentage_matrix2)           
 # Create the heatmap using geom_tile
@@ -766,9 +824,5 @@ ggplot(data_melt, aes(X2, X1)) +
   theme(legend.position = "none")+
   scale_x_discrete(position = "top") +  # Reverse x-axis ticks
   scale_y_discrete(limits = rev(levels(data_melt$X2))) 
-
 ```
-
-
-
 
